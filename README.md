@@ -26,7 +26,6 @@ Every artifact contains:
 - `kebab-lineage-23.2-kernelsu-next-*.zip`: AnyKernel3 flashable package
 - `build-info.txt`: resolved kernel and KernelSU-Next commit SHAs, compiler version, and kernel release
 - `.config`: final build configuration
-- `dtbs/`: compiled device trees for inspection/recovery
 
 ## Flashing warning
 
@@ -43,4 +42,3 @@ The workflow defaults are intentionally pinned where compatibility matters. The 
 - [LineageOS OnePlus sm8250 kernel](https://github.com/LineageOS/android_kernel_oneplus_sm8250)
 - [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next)
 - [AnyKernel3](https://github.com/osm0sis/AnyKernel3)
-
