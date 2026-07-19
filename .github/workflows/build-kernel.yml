@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Check out build configuration
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install build dependencies
         run: |
@@ -60,10 +60,11 @@ jobs:
 
       - name: Fetch the LineageOS 23.2 Clang toolchain
         run: |
-          mkdir -p toolchain
-          curl --fail --location --retry 3 --show-error \
-            "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/${CLANG_VERSION}.tar.gz" \
-            | tar -xz -C toolchain
+          git clone --depth=1 --filter=blob:none --sparse \
+            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 \
+            clang-prebuilts
+          git -C clang-prebuilts sparse-checkout set "${CLANG_VERSION}"
+          mv "clang-prebuilts/${CLANG_VERSION}" toolchain
           toolchain/bin/clang --version
 
       - name: Build kernel
