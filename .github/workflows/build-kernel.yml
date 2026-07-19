@@ -39,9 +39,9 @@ jobs:
       KSU_REF: ${{ inputs.kernelsu_ref || 'v1.1.1' }}
       CLANG_VERSION: clang-r563880c
       AOSP_TAG: android-16.0.0_r4
-      KERNEL_DIR: ${{ runner.temp }}/k
-      OUT_DIR: ${{ runner.temp }}/o
-      TOOLCHAIN_DIR: ${{ runner.temp }}/t
+      KERNEL_DIR: /tmp/kebab-kernel
+      OUT_DIR: /tmp/kebab-out
+      TOOLCHAIN_DIR: /tmp/kebab-clang
 
     steps:
       - name: Check out build configuration
