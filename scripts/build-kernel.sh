@@ -2,10 +2,10 @@
 set -euo pipefail
 
 ROOT_DIR="${GITHUB_WORKSPACE:-$(pwd)}"
-KERNEL_DIR="${ROOT_DIR}/kernel"
-OUT_DIR="${ROOT_DIR}/out"
+KERNEL_DIR="${KERNEL_DIR:-${ROOT_DIR}/kernel}"
+OUT_DIR="${OUT_DIR:-${ROOT_DIR}/out}"
 DIST_DIR="${ROOT_DIR}/dist"
-TOOLCHAIN_DIR="${ROOT_DIR}/toolchain"
+TOOLCHAIN_DIR="${TOOLCHAIN_DIR:-${ROOT_DIR}/toolchain}"
 
 : "${KERNEL_REF:=lineage-23.2}"
 : "${KSU_REF:=v1.1.1}"
@@ -67,19 +67,13 @@ for required in CONFIG_KSU=y CONFIG_KSU_KPROBES_HOOK=y CONFIG_KPROBES=y CONFIG_O
   }
 done
 
-echo "Building Image and DTBs"
-make -j"$(nproc)" "${make_args[@]}" Image dtbs
+echo "Building Image"
+make -j"$(nproc)" "${make_args[@]}" Image
 
 image_path="${OUT_DIR}/arch/arm64/boot/Image"
 test -s "${image_path}"
 cp "${image_path}" "${DIST_DIR}/Image"
 cp "${OUT_DIR}/.config" "${DIST_DIR}/kernel.config"
-
-mkdir -p "${DIST_DIR}/dtbs"
-(
-  cd "${OUT_DIR}/arch/arm64/boot/dts"
-  find . -type f -name '*.dtb' -exec cp --parents '{}' "${DIST_DIR}/dtbs" \;
-)
 
 kernel_sha="$(git -C "${KERNEL_DIR}" rev-parse HEAD)"
 ksu_sha="$(git -C "${KERNEL_DIR}/KernelSU-Next" rev-parse HEAD)"
