@@ -67,6 +67,12 @@ for required in CONFIG_KSU=y CONFIG_KSU_KPROBES_HOOK=y CONFIG_KPROBES=y CONFIG_O
   }
 done
 
+echo "Preparing KernelSU-Next's Linux 4.19 compatibility backport"
+# KernelSU-Next v1.1.1 adds path_umount from its Kbuild Makefile. Build one
+# KernelSU object serially first so that source patch is applied before the
+# parallel build can compile fs/namespace.o.
+make -j1 "${make_args[@]}" drivers/kernelsu/core_hook.o
+
 echo "Building Image"
 make -j"$(nproc)" "${make_args[@]}" Image
 
