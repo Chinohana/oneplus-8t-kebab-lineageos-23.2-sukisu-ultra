@@ -38,6 +38,7 @@ jobs:
       KERNEL_REF: ${{ inputs.kernel_ref || 'lineage-23.2' }}
       KSU_REF: ${{ inputs.kernelsu_ref || 'v1.1.1' }}
       CLANG_VERSION: clang-r563880c
+      AOSP_TAG: android-16.0.0_r4
 
     steps:
       - name: Check out build configuration
@@ -60,7 +61,7 @@ jobs:
 
       - name: Fetch the LineageOS 23.2 Clang toolchain
         run: |
-          git clone --depth=1 --filter=blob:none --sparse \
+          git clone --depth=1 --filter=blob:none --sparse --branch "${AOSP_TAG}" \
             https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 \
             clang-prebuilts
           git -C clang-prebuilts sparse-checkout set "${CLANG_VERSION}"
