@@ -48,6 +48,13 @@ if ! grep -q '^#define MODULE_IMPORT_NS(ns)' \
     "${ROOT_DIR}/patches/sukisu-module-import-ns-4.19.patch"
 fi
 
+echo "Disabling unavailable VFS wrapper methods on Linux 4.19"
+if ! grep -q '^#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)$' \
+  "${KERNEL_DIR}/KernelSU/kernel/infra/file_wrapper.c"; then
+  git -C "${KERNEL_DIR}/KernelSU" apply \
+    "${ROOT_DIR}/patches/sukisu-file-wrapper-4.19.patch"
+fi
+
 make_args=(
   -C "${KERNEL_DIR}"
   O="${OUT_DIR}"
