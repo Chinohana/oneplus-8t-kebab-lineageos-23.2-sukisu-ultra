@@ -1,7 +1,7 @@
 #!/bin/sh
 
 properties() { '
-kernel.string=LineageOS 23.2 + KernelSU-Next for OnePlus 8T
+kernel.string=LineageOS 23.2 + SukiSU-Ultra for OnePlus 8T
 do.devicecheck=1
 do.modules=0
 do.systemless=1
@@ -21,4 +21,3 @@ patch_vbmeta_flag=auto
 
 split_boot
 flash_boot
-
