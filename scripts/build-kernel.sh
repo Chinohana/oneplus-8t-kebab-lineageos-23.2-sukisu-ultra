@@ -41,6 +41,13 @@ if ! grep -q '^static inline bool sukisu_access_ok_compat' \
     "${ROOT_DIR}/patches/sukisu-kpm-access-ok-4.19.patch"
 fi
 
+echo "Backporting MODULE_IMPORT_NS compatibility for SukiSU-Ultra"
+if ! grep -q '^#define MODULE_IMPORT_NS(ns)' \
+  "${KERNEL_DIR}/KernelSU/kernel/core/init.c"; then
+  git -C "${KERNEL_DIR}/KernelSU" apply \
+    "${ROOT_DIR}/patches/sukisu-module-import-ns-4.19.patch"
+fi
+
 make_args=(
   -C "${KERNEL_DIR}"
   O="${OUT_DIR}"
