@@ -1,0 +1,28 @@
+diff --git a/kernel/manager/pkg_observer.c b/kernel/manager/pkg_observer.c
+index 512b9929..00000000 100644
+--- a/kernel/manager/pkg_observer.c
++++ b/kernel/manager/pkg_observer.c
+@@ -33,8 +33,23 @@ static int ksu_handle_inode_event(struct fsnotify_mark *mark, u32 mask, struct in
+     return 0;
+ }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
++static int ksu_handle_event(struct fsnotify_group *group, struct inode *inode, u32 mask, const void *data,
++                            int data_type, const unsigned char *file_name, u32 cookie,
++                            struct fsnotify_iter_info *iter_info)
++{
++    struct qstr name = QSTR_INIT(file_name, file_name ? strlen(file_name) : 0);
++
++    return ksu_handle_inode_event(NULL, mask, inode, NULL, file_name ? &name : NULL, cookie);
++}
++#endif
++
+ static const struct fsnotify_ops ksu_ops = {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
++    .handle_event = ksu_handle_event,
++#else
+     .handle_inode_event = ksu_handle_inode_event,
++#endif
+ };
+ 
+ static int add_mark_on_inode(struct inode *inode, u32 mask, struct fsnotify_mark **out)
