@@ -1,0 +1,23 @@
+diff --git a/kernel/kpm/kpm.c b/kernel/kpm/kpm.c
+index ea572215..00000000 100644
+--- a/kernel/kpm/kpm.c
++++ b/kernel/kpm/kpm.c
+@@ -38,6 +38,18 @@
+ #include "kpm.h"
+ #include "compact.h"
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
++static inline bool sukisu_access_ok_compat(const void __user *addr,
++                                           unsigned long size)
++{
++    return access_ok(VERIFY_READ, addr, size);
++}
++
++#undef access_ok
++#define access_ok(addr, size) \
++    sukisu_access_ok_compat((const void __user *)(addr), (size))
++#endif
++
+ #define KPM_NAME_LEN 32
+ #define KPM_ARGS_LEN 1024
+ 
