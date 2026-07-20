@@ -83,6 +83,13 @@ if ! grep -q '^#define KSU_TWA_RESUME true' \
     "${ROOT_DIR}/patches/sukisu-task-work-4.19.patch"
 fi
 
+echo "Gating the newer seccomp filter counter on Linux 4.19"
+if ! grep -q '^#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)$' \
+  "${KERNEL_DIR}/KernelSU/kernel/policy/app_profile.c"; then
+  git -C "${KERNEL_DIR}/KernelSU" apply \
+    "${ROOT_DIR}/patches/sukisu-seccomp-filter-count-4.19.patch"
+fi
+
 make_args=(
   -C "${KERNEL_DIR}"
   O="${OUT_DIR}"
