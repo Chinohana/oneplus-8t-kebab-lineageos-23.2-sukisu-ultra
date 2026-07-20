@@ -1,4 +1,4 @@
-name: Build kebab kernel with KernelSU-Next
+name: Build kebab kernel with SukiSU-Ultra
 
 on:
   workflow_dispatch:
@@ -8,10 +8,10 @@ on:
         required: true
         default: lineage-23.2
         type: string
-      kernelsu_ref:
-        description: KernelSU-Next tag or commit (v1.1.1 supports Linux 4.19)
+      sukisu_ref:
+        description: SukiSU-Ultra tag or commit
         required: true
-        default: v1.1.1
+        default: v4.1.3
         type: string
   push:
     branches:
@@ -20,6 +20,7 @@ on:
       - .github/workflows/build-kernel.yml
       - configs/**
       - packaging/**
+      - patches/**
       - scripts/**
 
 permissions:
@@ -31,12 +32,12 @@ concurrency:
 
 jobs:
   build:
-    name: LineageOS 23.2 / kebab / KernelSU-Next
+    name: LineageOS 23.2 / kebab / SukiSU-Ultra
     runs-on: ubuntu-22.04
     timeout-minutes: 120
     env:
       KERNEL_REF: ${{ inputs.kernel_ref || 'lineage-23.2' }}
-      KSU_REF: ${{ inputs.kernelsu_ref || 'v1.1.1' }}
+      SUKISU_REF: ${{ inputs.sukisu_ref || 'v4.1.3' }}
       CLANG_VERSION: clang-r563880c
       AOSP_TAG: android-16.0.0_r4
       KERNEL_DIR: /tmp/kebab-kernel
@@ -80,7 +81,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kebab-lineage-23.2-kernelsu-next-${{ env.KERNEL_SHA }}
+          name: kebab-lineage-23.2-sukisu-ultra-${{ env.KERNEL_SHA }}
           path: dist/
           if-no-files-found: error
           compression-level: 6
