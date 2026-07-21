@@ -1,0 +1,51 @@
+From f6cf3d5770f904aa77351e407bd050fbb5d1c0f5 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Wed, 22 Jul 2026 04:36:37 +0800
+Subject: [PATCH] compat: backport restricted path_mount for SukiSU namespaces
+
+SukiSU v4.1.3 calls path_mount only for MS_PRIVATE|MS_REC on an already referenced root path. Reject every other argument combination, then follow the locked 4.19 mount ordering through security_sb_mount, may_mount and do_change_type, whose namespace-locked checks validate the mount root and check_mnt.
+---
+ fs/namespace.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 4368a4b..5f60215 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -2281,6 +2281,33 @@ static int do_change_type(struct path *path, int ms_flags)
+ 	return err;
+ }
+ 
++/*
++ * Restricted path-based mount entry for SukiSU individual namespaces.
++ * Only the recursive private propagation change used by setup_mount_ns()
++ * is supported; all other mount operations remain on the normal syscall path.
++ */
++int path_mount(const char *dev_name, struct path *path,
++		const char *type_page, unsigned long flags, void *data_page)
++{
++	int ret;
++
++	if (dev_name || type_page || data_page)
++		return -EOPNOTSUPP;
++	if (flags != (MS_PRIVATE | MS_REC))
++		return -EOPNOTSUPP;
++	if (!path || !path->mnt || !path->dentry)
++		return -EINVAL;
++
++	ret = security_sb_mount(dev_name, path, type_page, flags, data_page);
++	if (ret)
++		return ret;
++	if (!may_mount())
++		return -EPERM;
++
++	/* Validates the mount root and check_mnt() under namespace_lock(). */
++	return do_change_type(path, flags);
++}
++
+ /*
+  * do loopback mount.
+  */
+-- 
+2.53.0.windows.2
+
