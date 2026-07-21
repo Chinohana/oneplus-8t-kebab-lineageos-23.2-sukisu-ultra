@@ -1,0 +1,26 @@
+From b70c8622db3e87b170f612160a83a7fac65bb6ec Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Wed, 22 Jul 2026 04:30:59 +0800
+Subject: [PATCH] compat: include Linux 4.19 task and pid declarations
+
+On the locked LineageOS 4.19 tree, sched/task.h declares tasklist_lock and init_task, sched/signal.h declares task_pgrp and task_session, and pid.h declares change_pid. Include exactly those headers in supercall dispatch.
+---
+ kernel/supercall/dispatch.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/kernel/supercall/dispatch.c b/kernel/supercall/dispatch.c
+index 35b1b17d..f526b306 100644
+--- a/kernel/supercall/dispatch.c
++++ b/kernel/supercall/dispatch.c
+@@ -1,5 +1,8 @@
+ #include <linux/capability.h>
+ #include <linux/cred.h>
++#include <linux/pid.h>
++#include <linux/sched/signal.h>
++#include <linux/sched/task.h>
+ #include <linux/slab.h>
+ #include <linux/vmalloc.h>
+ #include <linux/uaccess.h>
+-- 
+2.53.0.windows.2
+
