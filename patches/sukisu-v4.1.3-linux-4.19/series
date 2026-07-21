@@ -11,3 +11,4 @@
 0011-compat-include-Linux-4.19-task-and-pid-declarations.patch
 0012-compat-centralize-Linux-4.19-task_work-semantics.patch
 0013-compat-release-seccomp-filters-correctly-on-Linux-4..patch
+0014-feature-report-selinux_hide-unsupported-on-Linux-4.1.patch

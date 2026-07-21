@@ -1,0 +1,119 @@
+From c37e54081fbf5cd7936464b03b8926dbbce3e4cd Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Wed, 22 Jul 2026 04:49:31 +0800
+Subject: [PATCH] feature: report selinux_hide unsupported on Linux 4.19
+
+Compile out selinux_hide on Linux 4.19 so no handler is registered. The generic feature API reports an absent handler as unsupported and returns -EOPNOTSUPP for set requests.
+---
+ kernel/core/init.c                | 6 +++++-
+ kernel/feature/selinux_hide.c     | 6 ++++++
+ kernel/runtime/boot_event.c       | 5 +++++
+ kernel/runtime/ksud_integration.c | 2 ++
+ 4 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/core/init.c b/kernel/core/init.c
+index 466b8724..6c29a552 100644
+--- a/kernel/core/init.c
++++ b/kernel/core/init.c
+@@ -9,6 +9,7 @@
+ #include <linux/rcupdate.h>
+ #include <linux/sched.h>
+ #include <linux/workqueue.h>
++#include <linux/version.h>
+ #include <linux/moduleparam.h>
+ 
+ #include "policy/allowlist.h"
+@@ -34,7 +35,6 @@
+ 
+ #if defined(__x86_64__)
+ #include <asm/cpufeature.h>
+-#include <linux/version.h>
+ #ifndef X86_FEATURE_INDIRECT_SAFE
+ #error "FATAL: Your kernel is missing the indirect syscall bypass patches!"
+ #endif
+@@ -148,7 +148,9 @@ int __init kernelsu_init(void)
+     ksu_sulog_init();
+     ksu_adb_root_init();
+     ksu_lsm_hook_init();
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+     ksu_selinux_hide_init();
++#endif
+ 
+     ksu_supercalls_init();
+ 
+@@ -221,7 +223,9 @@ void __exit kernelsu_exit(void)
+ 
+     ksu_allowlist_exit();
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+     ksu_selinux_hide_exit();
++#endif
+     ksu_lsm_hook_exit();
+     ksu_adb_root_exit();
+     ksu_sulog_exit();
+diff --git a/kernel/feature/selinux_hide.c b/kernel/feature/selinux_hide.c
+index 5bb59bfe..9bae2a96 100644
+--- a/kernel/feature/selinux_hide.c
++++ b/kernel/feature/selinux_hide.c
+@@ -1,4 +1,8 @@
+ #include "selinux_hide.h"
++#include <linux/version.h>
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
++
+ #include "infra/symbol_resolver.h"
+ #include "linux/jump_label.h"
+ #include "selinux/sepolicy.h"
+@@ -1133,3 +1137,5 @@ allow:
+     goto out;
+ }
+ #endif
++
++#endif /* Linux 5.10+ selinux_hide implementation */
+diff --git a/kernel/runtime/boot_event.c b/kernel/runtime/boot_event.c
+index 7fcb1d9d..9def4c2d 100644
+--- a/kernel/runtime/boot_event.c
++++ b/kernel/runtime/boot_event.c
+@@ -2,6 +2,7 @@
+ #include <linux/err.h>
+ #include <linux/fs.h>
+ #include <linux/namei.h>
++#include <linux/version.h>
+ #include <linux/printk.h>
+ 
+ #include "policy/allowlist.h"
+@@ -30,7 +31,9 @@ void on_post_fs_data(void)
+     ksu_observer_init();
+     // Sanity check for safe mode only needs early-boot input samples.
+     ksu_stop_input_hook_runtime();
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+     ksu_selinux_hide_handle_post_fs_data();
++#endif
+ }
+ 
+ extern void ext4_unregister_sysfs(struct super_block *sb);
+@@ -67,5 +70,7 @@ void on_boot_completed(void)
+     ksu_boot_completed = true;
+     pr_info("on_boot_completed!\n");
+     track_throne(true);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+     ksu_selinux_hide_drop_backup_if_unused();
++#endif
+ }
+diff --git a/kernel/runtime/ksud_integration.c b/kernel/runtime/ksud_integration.c
+index 74d9298e..8d247a73 100644
+--- a/kernel/runtime/ksud_integration.c
++++ b/kernel/runtime/ksud_integration.c
+@@ -160,7 +160,9 @@ void ksu_handle_execveat_ksud(const char *path, struct user_arg_ptr *argv)
+         char buf[16];
+         if (!init_second_stage_executed && check_argv(*argv, 1, "second_stage", buf, sizeof(buf))) {
+             pr_info("/system/bin/init second_stage executed\n");
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+             ksu_selinux_hide_handle_second_stage();
++#endif
+             apply_kernelsu_rules();
+             cache_sid();
+             setup_ksu_cred();
+-- 
+2.53.0.windows.2
+
