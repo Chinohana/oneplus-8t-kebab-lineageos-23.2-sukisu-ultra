@@ -7,3 +7,4 @@
 0007-compat-adapt-task_work-notify-argument.patch
 0008-compat-gate-newer-seccomp-filter-counter.patch
 0009-compat-account-for-legacy-SELinux-policy-layout.patch
+0010-compat-use-native-Linux-4.19-nofault-and-arm64-helpe.patch
