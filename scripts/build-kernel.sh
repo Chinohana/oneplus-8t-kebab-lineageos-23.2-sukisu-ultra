@@ -41,82 +41,32 @@ test "$(git -C "${SUKISU_DIR}" rev-parse HEAD)" = "${SUKISU_COMMIT}"
 test ! -e "${KERNEL_DIR}/drivers/kernelsu"
 ln -s ../SukiSU-Ultra/kernel "${KERNEL_DIR}/drivers/kernelsu"
 
-integration_patch="${ROOT_DIR}/patches/kernel-lineage-23.2/0001-build-integrate-SukiSU-through-drivers-Kconfig.patch"
-git -C "${KERNEL_DIR}" apply --check "${integration_patch}"
-git -C "${KERNEL_DIR}" apply "${integration_patch}"
+apply_patch_series() {
+  local repo="$1"
+  local series_dir="$2"
+  local patch_name patch_path
 
-echo "Backporting path_umount for Linux 4.19"
-if ! grep -q '^int path_umount(struct path \*path, int flags)' \
-  "${KERNEL_DIR}/fs/namespace.c"; then
-  git -C "${KERNEL_DIR}" apply "${ROOT_DIR}/patches/path-umount-4.19.patch"
-fi
+  test -f "${series_dir}/series"
+  while IFS= read -r patch_name || [[ -n "${patch_name}" ]]; do
+    [[ -z "${patch_name}" || "${patch_name}" == \#* ]] && continue
+    [[ "${patch_name}" != */* && "${patch_name}" != *\\* ]] || {
+      echo "Invalid patch name in ${series_dir}/series: ${patch_name}" >&2
+      exit 1
+    }
+    patch_path="${series_dir}/${patch_name}"
+    test -f "${patch_path}"
+    echo "Applying ${patch_path}"
+    git -C "${repo}" apply --check "${patch_path}"
+    git -C "${repo}" apply "${patch_path}"
+  done < "${series_dir}/series"
+}
 
-echo "Applying the Linux 4.19 access_ok compatibility shim for SukiSU-Ultra KPM"
-if ! grep -q '^static inline bool sukisu_access_ok_compat' \
-  "${SUKISU_DIR}/kernel/kpm/kpm.c"; then
-  git -C "${SUKISU_DIR}" apply \
-    "${ROOT_DIR}/patches/sukisu-kpm-access-ok-4.19.patch"
-fi
-
-echo "Backporting MODULE_IMPORT_NS compatibility for SukiSU-Ultra"
-if ! grep -q '^#define MODULE_IMPORT_NS(ns)' \
-  "${SUKISU_DIR}/kernel/core/init.c"; then
-  git -C "${SUKISU_DIR}" apply \
-    "${ROOT_DIR}/patches/sukisu-module-import-ns-4.19.patch"
-fi
-
-echo "Disabling unavailable VFS wrapper methods on Linux 4.19"
-if ! grep -q '^#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)$' \
-  "${SUKISU_DIR}/kernel/infra/file_wrapper.c"; then
-  git -C "${SUKISU_DIR}" apply \
-    "${ROOT_DIR}/patches/sukisu-file-wrapper-4.19.patch"
-fi
-
-echo "Backporting the native seccomp syscall count for Linux 4.19"
-if ! grep -q '^#define SECCOMP_ARCH_NATIVE_NR __NR_syscalls' \
-  "${SUKISU_DIR}/kernel/infra/seccomp_cache.c"; then
-  git -C "${SUKISU_DIR}" apply \
-    "${ROOT_DIR}/patches/sukisu-seccomp-nr-4.19.patch"
-fi
-
-echo "Using the Linux 4.19 mount header layout for SukiSU-Ultra"
-if grep -q '^#include <uapi/linux/mount.h>' \
-  "${SUKISU_DIR}/kernel/infra/su_mount_ns.c"; then
-  git -C "${SUKISU_DIR}" apply \
-    "${ROOT_DIR}/patches/sukisu-mount-header-4.19.patch"
-fi
-
-echo "Backporting the Linux 4.19 fsnotify observer callback"
-if ! grep -q '^static int ksu_handle_event(struct fsnotify_group' \
-  "${SUKISU_DIR}/kernel/manager/pkg_observer.c"; then
-  git -C "${SUKISU_DIR}" apply \
-    "${ROOT_DIR}/patches/sukisu-fsnotify-4.19.patch"
-fi
-
-echo "Backporting the Linux 4.19 task_work API for SukiSU-Ultra"
-if ! grep -q '^#define KSU_TWA_RESUME true' \
-  "${SUKISU_DIR}/kernel/policy/allowlist.c"; then
-  git -C "${SUKISU_DIR}" apply \
-    "${ROOT_DIR}/patches/sukisu-task-work-4.19.patch"
-fi
-
-echo "Gating the newer seccomp filter counter on Linux 4.19"
-if ! grep -q '^#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)$' \
-  "${SUKISU_DIR}/kernel/policy/app_profile.c"; then
-  git -C "${SUKISU_DIR}" apply \
-    "${ROOT_DIR}/patches/sukisu-seccomp-filter-count-4.19.patch"
-fi
-
-echo "Backporting the Linux 4.19 SELinux policy layout for SukiSU-Ultra"
-if ! grep -q '^static DEFINE_MUTEX(ksu_rules);' \
-  "${SUKISU_DIR}/kernel/selinux/rules.c"; then
-  git -C "${SUKISU_DIR}" apply \
-    "${ROOT_DIR}/patches/sukisu-selinux-policy-4.19.patch"
-fi
-
-echo "Using the Linux 4.19 SELinux policydb implementation"
-cp "${ROOT_DIR}/compat/sukisu/sepolicy-4.19.c" \
-  "${SUKISU_DIR}/kernel/selinux/sepolicy.c"
+apply_patch_series "${KERNEL_DIR}" \
+  "${ROOT_DIR}/patches/kernel-lineage-23.2"
+apply_patch_series "${SUKISU_DIR}" \
+  "${ROOT_DIR}/patches/sukisu-v4.1.3-linux-4.19"
+git -C "${KERNEL_DIR}" diff --check
+git -C "${SUKISU_DIR}" diff --check
 
 make_args=(
   -C "${KERNEL_DIR}"

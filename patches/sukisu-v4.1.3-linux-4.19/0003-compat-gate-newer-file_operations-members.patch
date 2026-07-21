@@ -1,8 +1,18 @@
+From 28b753979b7280096ee7851a6982bb8f5a8f4d0d Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Wed, 22 Jul 2026 04:22:47 +0800
+Subject: [PATCH 3/9] compat: gate newer file_operations members
+
+Linux 4.19 file_operations has neither iopoll nor remap_file_range in the layouts used by SukiSU v4.1.3. Compile those wrappers only for kernels that expose the members.
+---
+ kernel/infra/file_wrapper.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
 diff --git a/kernel/infra/file_wrapper.c b/kernel/infra/file_wrapper.c
-index 66ea2958..00000000 100644
+index 66ea295..5521949 100644
 --- a/kernel/infra/file_wrapper.c
 +++ b/kernel/infra/file_wrapper.c
-@@ -93,7 +93,7 @@ static int ksu_wrapper_iopoll(struct kiocb *kiocb, struct io_comp_batch *icb, uns
+@@ -92,7 +92,7 @@ static int ksu_wrapper_iopoll(struct kiocb *kiocb, struct io_comp_batch *icb, un
      kiocb->ki_filp = orig;
      return orig->f_op->iopoll(kiocb, icb, v);
  }
@@ -11,7 +21,7 @@ index 66ea2958..00000000 100644
  static int ksu_wrapper_iopoll(struct kiocb *kiocb, bool spin)
  {
      struct ksu_file_wrapper *data = kiocb->ki_filp->private_data;
-@@ -302,6 +302,7 @@ static ssize_t ksu_wrapper_copy_file_range(struct file *file_in, loff_t pos_in, s
+@@ -302,6 +302,7 @@ static ssize_t ksu_wrapper_copy_file_range(struct file *file_in, loff_t pos_in,
      return orig->f_op->copy_file_range(file_in, pos_in, orig, pos_out, len, flags);
  }
  
@@ -19,7 +29,7 @@ index 66ea2958..00000000 100644
  // no REMAP_FILE_DEDUP: use file_in
  // https://cs.android.com/android/kernel/superproject/+/common-android-mainline:common/fs/read_write.c;l=1598-1599;drc=398da7defe218d3e51b0f3bdff75147e28125b60
  // https://cs.android.com/android/kernel/superproject/+/common-android-mainline:common/fs/remap_range.c;l=403-404;drc=398da7defe218d3e51b0f3bdff75147e28125b60
-@@ -321,6 +322,7 @@ static loff_t ksu_wrapper_remap_file_range(struct file *file_in, loff_t pos_in, s
+@@ -320,6 +321,7 @@ static loff_t ksu_wrapper_remap_file_range(struct file *file_in, loff_t pos_in,
          return orig->f_op->remap_file_range(orig, pos_in, file_out, pos_out, len, remap_flags);
      }
  }
@@ -47,3 +57,6 @@ index 66ea2958..00000000 100644
      p->ops.fadvise = fp->f_op->fadvise ? ksu_wrapper_fadvise : NULL;
  
  #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+-- 
+2.53.0.windows.2
+

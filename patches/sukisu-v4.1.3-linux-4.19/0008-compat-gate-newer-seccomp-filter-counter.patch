@@ -1,0 +1,27 @@
+From 9df5e67c8c933e408e91fa8908c53e03bd0f64cd Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Wed, 22 Jul 2026 04:22:49 +0800
+Subject: [PATCH 8/9] compat: gate newer seccomp filter counter
+
+Linux 4.19 task seccomp state has no filter_count member. Touch that counter only on kernels whose task_struct layout provides it.
+---
+ kernel/policy/app_profile.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/kernel/policy/app_profile.c b/kernel/policy/app_profile.c
+index 3db2a6f..29987a9 100644
+--- a/kernel/policy/app_profile.c
++++ b/kernel/policy/app_profile.c
+@@ -89,7 +89,9 @@ static void disable_seccomp(void)
+ 
+     current->seccomp.mode = 0;
+     current->seccomp.filter = NULL;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+     atomic_set(&current->seccomp.filter_count, 0);
++#endif
+     spin_unlock_irq(&current->sighand->siglock);
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+-- 
+2.53.0.windows.2
+

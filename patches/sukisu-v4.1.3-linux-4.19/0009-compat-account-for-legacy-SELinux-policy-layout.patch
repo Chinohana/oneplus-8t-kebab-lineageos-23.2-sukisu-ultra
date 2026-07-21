@@ -1,7 +1,19 @@
+From fa38723930d8a8219d01e24bcfb534efc3b70412 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Wed, 22 Jul 2026 04:22:49 +0800
+Subject: [PATCH 9/9] compat: account for legacy SELinux policy layout
+
+Linux 4.19 stores policydb under selinux_state.ss rather than selinux_state.policy. Stage 2 replaces this baseline adaptation with an explicit unsupported policy mutation path until the real policy lock work is reviewed.
+---
+ kernel/selinux/rules.c    | 37 ++++++++++++++++++++++++++++++++++++-
+ kernel/selinux/sepolicy.c |  2 ++
+ 2 files changed, 38 insertions(+), 1 deletion(-)
+
 diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
+index 6ead379..98fc276 100644
 --- a/kernel/selinux/rules.c
 +++ b/kernel/selinux/rules.c
-@@ -16,9 +16,13 @@
+@@ -15,9 +15,13 @@
  #include "linux/lsm_audit.h" // IWYU pragma: keep
  #include "xfrm.h"
  
@@ -16,7 +28,7 @@ diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
  
  #define ALL NULL
  
-@@ -44,7 +48,9 @@ static void reset_avc_cache()
+@@ -44,13 +48,16 @@ static void reset_avc_cache()
  
  void apply_kernelsu_rules()
  {
@@ -26,14 +38,15 @@ diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
      struct policydb *db;
  
      if (!getenforce()) {
-@@ -53,5 +59,6 @@ void apply_kernelsu_rules()
+         pr_info("SELinux permissive or disabled, apply rules!\n");
      }
  
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
      mutex_lock(&selinux_state.policy_mutex);
      backup_sepolicy =
          ksu_dup_sepolicy(rcu_dereference_protected(old_pol, lockdep_is_held(&selinux_state.policy_mutex)));
-@@ -83,5 +90,9 @@ void apply_kernelsu_rules()
+@@ -82,6 +89,10 @@ void apply_kernelsu_rules()
+     }
  
      db = &pol->policydb;
 +#else
@@ -43,7 +56,7 @@ diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
  
      ksu_type(db, KERNEL_SU_DOMAIN, "domain");
      ksu_permissive(db, KERNEL_SU_DOMAIN);
-@@ -143,13 +154,19 @@ void apply_kernelsu_rules()
+@@ -148,13 +159,19 @@ void apply_kernelsu_rules()
      ksu_allow(db, "system_server", KERNEL_SU_DOMAIN, "process", "getpgid");
      ksu_allow(db, "system_server", KERNEL_SU_DOMAIN, "process", "sigkill");
  
@@ -63,7 +76,7 @@ diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
  }
  
  #define KSU_SEPOLICY_MAX_BATCH_SIZE (8U * 1024U * 1024U)
-@@ -335,7 +352,9 @@ static int apply_one_sepolicy_cmd(struct policydb *db, const struct sepol_data *
+@@ -424,7 +441,9 @@ static int apply_one_sepolicy_cmd(struct policydb *db, const struct sepol_data *
  
  int handle_sepolicy(void __user *user_data, u64 data_len)
  {
@@ -73,7 +86,7 @@ diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
      struct policydb *db;
      struct sepol_batch_cursor cursor;
      u8 *payload;
-@@ -365,6 +384,7 @@ int handle_sepolicy(void __user *user_data, u64 data_len)
+@@ -454,6 +473,7 @@ int handle_sepolicy(void __user *user_data, u64 data_len)
          pr_info("SELinux permissive or disabled when handle policy!\n");
      }
  
@@ -81,7 +94,7 @@ diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
      mutex_lock(&selinux_state.policy_mutex);
  
      old_pol = selinux_state.policy;
-@@ -377,6 +397,10 @@ int handle_sepolicy(void __user *user_data, u64 data_len)
+@@ -464,6 +484,10 @@ int handle_sepolicy(void __user *user_data, u64 data_len)
          goto out_unlock;
      }
      db = &pol->policydb;
@@ -92,7 +105,7 @@ diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
  
      cursor.cur = payload;
      cursor.end = payload + (size_t)data_len;
-@@ -419,18 +443,29 @@ int handle_sepolicy(void __user *user_data, u64 data_len)
+@@ -507,18 +531,29 @@ int handle_sepolicy(void __user *user_data, u64 data_len)
          cmd_index++;
      }
  
@@ -123,9 +136,10 @@ diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
      kvfree(payload);
  
 diff --git a/kernel/selinux/sepolicy.c b/kernel/selinux/sepolicy.c
+index 6bd3df1..da8d005 100644
 --- a/kernel/selinux/sepolicy.c
 +++ b/kernel/selinux/sepolicy.c
-@@ -840,6 +840,7 @@ bool ksu_genfscon(struct policydb *db, const char *fs_name, const char *path, con
+@@ -867,6 +867,7 @@ bool ksu_genfscon(struct policydb *db, const char *fs_name, const char *path, co
  
  // ======== sepolicy ========
  
@@ -133,8 +147,11 @@ diff --git a/kernel/selinux/sepolicy.c b/kernel/selinux/sepolicy.c
  void ksu_destroy_sepolicy(struct selinux_policy *pol)
  {
      policydb_destroy(&pol->policydb);
-@@ -908,3 +909,4 @@ out_free_data:
+@@ -946,3 +947,4 @@ out_free_data:
  
      return ERR_PTR(ret);
  }
 +#endif
+-- 
+2.53.0.windows.2
+

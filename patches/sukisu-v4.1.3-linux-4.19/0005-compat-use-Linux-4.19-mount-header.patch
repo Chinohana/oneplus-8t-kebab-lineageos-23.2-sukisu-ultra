@@ -1,0 +1,26 @@
+From 4353bb02805d32dc1047105160b9ee59f2aa3157 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Wed, 22 Jul 2026 04:22:48 +0800
+Subject: [PATCH 5/9] compat: use Linux 4.19 mount header
+
+Linux 4.19 exposes the mount flags required by SukiSU through linux/mount.h rather than the newer uapi include path used upstream.
+---
+ kernel/infra/su_mount_ns.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/kernel/infra/su_mount_ns.c b/kernel/infra/su_mount_ns.c
+index be2b5a4..05cb49c 100644
+--- a/kernel/infra/su_mount_ns.c
++++ b/kernel/infra/su_mount_ns.c
+@@ -13,7 +13,7 @@
+ #include <linux/syscalls.h>
+ #include <linux/task_work.h>
+ #include <linux/version.h>
+-#include <uapi/linux/mount.h>
++#include <linux/mount.h>
+ 
+ #include "arch.h"
+ #include "klog.h" // IWYU pragma: keep
+-- 
+2.53.0.windows.2
+

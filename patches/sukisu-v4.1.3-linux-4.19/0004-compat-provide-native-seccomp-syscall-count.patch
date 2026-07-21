@@ -1,0 +1,30 @@
+From 469fba1a6a6924fae3629814bc46200aed1bd9f8 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Wed, 22 Jul 2026 04:22:48 +0800
+Subject: [PATCH 4/9] compat: provide native seccomp syscall count
+
+Linux 4.19 does not define SECCOMP_ARCH_NATIVE_NR. Use the target architecture __NR_syscalls value when the generic name is absent.
+---
+ kernel/infra/seccomp_cache.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/kernel/infra/seccomp_cache.c b/kernel/infra/seccomp_cache.c
+index a9d2b63..438610a 100644
+--- a/kernel/infra/seccomp_cache.c
++++ b/kernel/infra/seccomp_cache.c
+@@ -5,6 +5,12 @@
+ #include <linux/uaccess.h>
+ #include <linux/filter.h>
+ #include <linux/seccomp.h>
++
++#ifndef SECCOMP_ARCH_NATIVE_NR
++#include <asm/unistd.h>
++#define SECCOMP_ARCH_NATIVE_NR __NR_syscalls
++#endif
++
+ #include "klog.h" // IWYU pragma: keep
+ #include "infra/seccomp_cache.h"
+ 
+-- 
+2.53.0.windows.2
+

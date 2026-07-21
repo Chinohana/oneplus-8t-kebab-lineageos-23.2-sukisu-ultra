@@ -1,0 +1,9 @@
+0001-compat-adapt-access_ok-call-shape-for-Linux-4.19.patch
+0002-compat-tolerate-missing-MODULE_IMPORT_NS-on-Linux-4..patch
+0003-compat-gate-newer-file_operations-members.patch
+0004-compat-provide-native-seccomp-syscall-count.patch
+0005-compat-use-Linux-4.19-mount-header.patch
+0006-compat-adapt-fsnotify-callback-for-Linux-4.19.patch
+0007-compat-adapt-task_work-notify-argument.patch
+0008-compat-gate-newer-seccomp-filter-counter.patch
+0009-compat-account-for-legacy-SELinux-policy-layout.patch

@@ -1,5 +1,15 @@
+From 5fef4d5d73359d80981b8ddb53cfb02b0fbf5ca9 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Wed, 22 Jul 2026 04:22:48 +0800
+Subject: [PATCH 7/9] compat: adapt task_work notify argument
+
+Linux 4.19 task_work_add takes bool notify rather than enum task_work_notify_mode. This baseline patch will be centralized in the stage 2 compatibility header.
+---
+ kernel/policy/allowlist.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
 diff --git a/kernel/policy/allowlist.c b/kernel/policy/allowlist.c
-index d5eac53f..00000000 100644
+index d5eac53..94cfb77 100644
 --- a/kernel/policy/allowlist.c
 +++ b/kernel/policy/allowlist.c
 @@ -3,6 +3,7 @@
@@ -32,3 +42,6 @@ index d5eac53f..00000000 100644
          kfree(cb);
          pr_warn("save_allow_list add task_work failed\n");
      }
+-- 
+2.53.0.windows.2
+
