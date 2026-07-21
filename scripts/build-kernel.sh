@@ -67,6 +67,8 @@ apply_patch_series "${SUKISU_DIR}" \
   "${ROOT_DIR}/patches/sukisu-v4.1.3-linux-4.19"
 git -C "${KERNEL_DIR}" diff --check
 git -C "${SUKISU_DIR}" diff --check
+git -C "${KERNEL_DIR}" diff --binary > "${DIST_DIR}/kernel-final.diff"
+git -C "${SUKISU_DIR}" diff --binary > "${DIST_DIR}/sukisu-final.diff"
 
 emit_patch_digests() {
   local series_dir="$1"

@@ -82,16 +82,21 @@ jobs:
           "${TOOLCHAIN_DIR}/bin/clang" --version
 
       - name: Build kernel
-        run: bash scripts/build-kernel.sh
+        shell: bash
+        run: |
+          mkdir -p dist
+          set -o pipefail
+          bash scripts/build-kernel.sh 2>&1 | tee dist/build.log
 
       - name: Package AnyKernel3 ZIP
         run: bash scripts/package-anykernel.sh
 
       - name: Upload build artifacts
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: kebab-lineage-23.2-sukisu-ultra-${{ env.KERNEL_SHA }}
           path: dist/
-          if-no-files-found: error
+          if-no-files-found: warn
           compression-level: 6
           retention-days: 14
