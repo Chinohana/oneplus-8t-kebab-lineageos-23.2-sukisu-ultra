@@ -13,3 +13,4 @@
 0013-compat-release-seccomp-filters-correctly-on-Linux-4..patch
 0014-feature-report-selinux_hide-unsupported-on-Linux-4.1.patch
 0015-security-disable-unsafe-SELinux-policy-mutation-on-L.patch
+0016-build-make-SukiSU-version-metadata-deterministic.patch
