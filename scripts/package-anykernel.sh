@@ -7,7 +7,15 @@ PACKAGE_DIR="${ROOT_DIR}/AnyKernel3"
 SHORT_SHA="${KERNEL_SHA:0:7}"
 ZIP_NAME="kebab-lineage-23.2-sukisu-ultra-${SHORT_SHA}.zip"
 
-git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git "${PACKAGE_DIR}"
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/build.lock"
+
+git init "${PACKAGE_DIR}"
+git -C "${PACKAGE_DIR}" remote add origin https://github.com/osm0sis/AnyKernel3.git
+git -C "${PACKAGE_DIR}" fetch --depth=1 origin "${ANYKERNEL3_COMMIT}"
+git -C "${PACKAGE_DIR}" checkout --detach FETCH_HEAD
+test "$(git -C "${PACKAGE_DIR}" rev-parse HEAD)" = "${ANYKERNEL3_COMMIT}"
+
 rm -rf "${PACKAGE_DIR}/.git" "${PACKAGE_DIR}/.github"
 cp "${ROOT_DIR}/packaging/anykernel.sh" "${PACKAGE_DIR}/anykernel.sh"
 cp "${DIST_DIR}/Image" "${PACKAGE_DIR}/Image"
