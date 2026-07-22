@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/build-image.yml
+      - .github/workflows/build-kernel.yml
       - build.lock
       - configs/**
       - patches/**
@@ -124,4 +124,3 @@ jobs:
           if-no-files-found: warn
           compression-level: 6
           retention-days: 14
-
