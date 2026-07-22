@@ -69,7 +69,26 @@ git -C "${SUKISU_DIR}" add -N -- kernel/compat/task_work_compat.h
 git -C "${KERNEL_DIR}" diff --check
 git -C "${SUKISU_DIR}" diff --check
 git -C "${KERNEL_DIR}" diff --binary > "${DIST_DIR}/kernel-final.diff"
-git -C "${SUKISU_DIR}" diff --binary > "${DIST_DIR}/sukisu-final.diff"
+git -C "${SUKISU_DIR}" diff --binary > "${DIST_DIR}/sukisu-final-complete.diff"
+
+write_applied_patches() {
+  local series_name="$1"
+  local series_dir="$2"
+  local patch_name
+
+  printf '[%s]\n' "${series_name}"
+  while IFS= read -r patch_name || [[ -n "${patch_name}" ]]; do
+    [[ -z "${patch_name}" || "${patch_name}" == \#* ]] && continue
+    printf '%s/%s\n' "${series_name}" "${patch_name}"
+  done < "${series_dir}/series"
+}
+
+{
+  write_applied_patches kernel-lineage-23.2 \
+    "${ROOT_DIR}/patches/kernel-lineage-23.2"
+  write_applied_patches sukisu-v4.1.3-linux-4.19 \
+    "${ROOT_DIR}/patches/sukisu-v4.1.3-linux-4.19"
+} > "${DIST_DIR}/applied-patches.txt"
 
 emit_patch_digests() {
   local series_dir="$1"

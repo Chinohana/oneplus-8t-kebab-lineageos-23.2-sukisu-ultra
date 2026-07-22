@@ -1,0 +1,20 @@
+name: Package AnyKernel3 (UNAPPROVED)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packaging-not-approved:
+    name: AnyKernel3 packaging is not approved
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Stop unapproved packaging
+        shell: bash
+        run: |
+          echo "AnyKernel3 packaging has not completed its security and device validation review." >&2
+          echo "This workflow is a placeholder and does not clone, package, or upload a ZIP." >&2
+          exit 1
+

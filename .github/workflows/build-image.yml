@@ -1,4 +1,4 @@
-name: Build kebab kernel with SukiSU-Ultra
+name: Build kebab kernel Image with SukiSU-Ultra
 
 on:
   workflow_dispatch:
@@ -6,23 +6,22 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/build-kernel.yml
+      - .github/workflows/build-image.yml
       - build.lock
       - configs/**
-      - packaging/**
       - patches/**
-      - scripts/**
+      - scripts/build-kernel.sh
 
 permissions:
   contents: read
 
 concurrency:
-  group: kebab-kernel-${{ github.ref }}
+  group: kebab-image-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: LineageOS 23.2 / kebab / SukiSU-Ultra
+    name: LineageOS 23.2 / kebab / Image only
     runs-on: ubuntu-22.04
     timeout-minutes: 120
     env:
@@ -55,7 +54,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
             bc bison build-essential ca-certificates device-tree-compiler \
-            flex git libelf-dev libssl-dev lz4 python3 rsync unzip zip zstd
+            flex git libelf-dev libssl-dev lz4 python3 rsync zstd
 
       - name: Fetch locked LineageOS kernel source
         run: |
@@ -81,22 +80,48 @@ jobs:
           mv "${toolchain_repo}/${CLANG_VERSION}" "${TOOLCHAIN_DIR}"
           "${TOOLCHAIN_DIR}/bin/clang" --version
 
-      - name: Build kernel
+      - name: Build kernel Image
         shell: bash
         run: |
           mkdir -p dist
           set -o pipefail
           bash scripts/build-kernel.sh 2>&1 | tee dist/build.log
 
-      - name: Package AnyKernel3 ZIP
-        run: bash scripts/package-anykernel.sh
+      - name: Finalize Image audit checksums
+        shell: bash
+        run: |
+          test -s dist/Image
+          test -s dist/kernel.config
+          test -s dist/build-info.txt
+          test -s dist/kernel-final.diff
+          test -s dist/sukisu-final-complete.diff
+          test -s dist/applied-patches.txt
+          test -s dist/build.log
+          cd dist
+          sha256sum \
+            Image \
+            kernel.config \
+            build-info.txt \
+            kernel-final.diff \
+            sukisu-final-complete.diff \
+            applied-patches.txt \
+            build.log > SHA256SUMS
 
-      - name: Upload build artifacts
+      - name: Upload Image build audit
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: kebab-lineage-23.2-sukisu-ultra-${{ env.KERNEL_SHA }}
-          path: dist/
+          name: kebab-lineage-23.2-sukisu-ultra-image-${{ env.KERNEL_SHA }}
+          path: |
+            dist/Image
+            dist/kernel.config
+            dist/build-info.txt
+            dist/SHA256SUMS
+            dist/kernel-final.diff
+            dist/sukisu-final-complete.diff
+            dist/applied-patches.txt
+            dist/build.log
           if-no-files-found: warn
           compression-level: 6
           retention-days: 14
+
