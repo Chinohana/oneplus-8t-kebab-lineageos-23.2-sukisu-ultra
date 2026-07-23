@@ -2,6 +2,12 @@ name: Build kebab kernel Image with SukiSU-Ultra
 
 on:
   workflow_dispatch:
+    inputs:
+      test_anykernel:
+        description: Build the owner-only TEST-ONLY AnyKernel3 artifact
+        required: true
+        default: false
+        type: boolean
   push:
     branches:
       - main
@@ -18,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: kebab-image-${{ github.ref }}
+  group: kebab-image-${{ github.ref }}-${{ inputs.test_anykernel }}
   cancel-in-progress: true
 
 jobs:
@@ -56,7 +62,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
             bc bison build-essential ca-certificates device-tree-compiler \
-            flex git libelf-dev libssl-dev lz4 python3 rsync shellcheck zstd
+            flex git libelf-dev libssl-dev lz4 python3 rsync shellcheck \
+            unzip zip zstd
 
       - name: Audit project scripts
         shell: bash
@@ -97,7 +104,63 @@ jobs:
           set -o pipefail
           bash scripts/build-kernel.sh 2>&1 | tee dist/build.log
 
+      - name: Audit explicit TEST-ONLY packaging guardrails
+        if: ${{ inputs.test_anykernel }}
+        shell: bash
+        run: |
+          grep -Fqx 'device.name1=kebab' packaging/anykernel.sh
+          grep -Fqx 'supported.versions=16' packaging/anykernel.sh
+          grep -Fqx 'IS_SLOT_DEVICE=1' packaging/anykernel.sh
+          grep -Fqx 'SLOT_SELECT=active' packaging/anykernel.sh
+          grep -Fqx 'PATCH_VBMETA_FLAG=0' packaging/anykernel.sh
+          grep -Fqx 'NO_MAGISK_CHECK=1' packaging/anykernel.sh
+          if grep -REiq \
+            'SLOT_SELECT=inactive|PATCH_VBMETA_FLAG=(auto|1)|flash_generic[[:space:]]+dtbo|by-name/(dtbo|vbmeta)' \
+            packaging scripts/package-anykernel.sh; then
+            echo "Forbidden AnyKernel3 partition or verification behavior found" >&2
+            exit 1
+          fi
+
+      - name: Build explicitly approved TEST-ONLY AnyKernel3 ZIP
+        if: ${{ inputs.test_anykernel }}
+        shell: bash
+        env:
+          ANYKERNEL3_PACKAGING_APPROVED: yes
+        run: bash scripts/package-anykernel.sh
+
+      - name: Verify explicit TEST-ONLY deliverables
+        if: ${{ inputs.test_anykernel }}
+        shell: bash
+        run: |
+          test -s "dist/${TEST_ZIP_NAME}"
+          for file in \
+            Image \
+            kernel.config \
+            build-info.txt \
+            SHA256SUMS \
+            applied-patches.txt \
+            root-readiness.txt \
+            build.log \
+            static-audit.txt \
+            TEST-ONLY-NOT-FOR-RELEASE.txt \
+            DEVICE_TEST_PLAN.md \
+            anykernel-zip-contents.txt; do
+            test -s "dist/${file}"
+          done
+          (
+            cd dist
+            sha256sum -c SHA256SUMS
+            unzip -t "${TEST_ZIP_NAME}"
+          )
+          grep -Fqx 'flashable_package=yes' dist/root-readiness.txt
+          grep -Fqx 'ready_for_owner_device_experimental_test=yes' dist/root-readiness.txt
+          grep -Fqx 'release_ready=no' dist/root-readiness.txt
+          grep -Fqx 'device_boot_test=no' dist/root-readiness.txt
+          grep -Fqx 'root_functional_test=no' dist/root-readiness.txt
+          grep -Fqx 'root_verified_on_device=no' dist/root-readiness.txt
+
       - name: Finalize Image audit checksums
+        if: ${{ !inputs.test_anykernel }}
         shell: bash
         run: |
           test -s dist/Image
@@ -122,7 +185,7 @@ jobs:
             build.log > SHA256SUMS
 
       - name: Upload Image build audit
-        if: always()
+        if: ${{ !inputs.test_anykernel }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: kebab-lineage-23.2-sukisu-ultra-image-${{ env.PROJECT_SHORT_SHA }}
@@ -138,5 +201,27 @@ jobs:
             dist/static-audit.txt
             dist/build.log
           if-no-files-found: warn
+          compression-level: 6
+          retention-days: 14
+
+      - name: Upload explicit owner TEST-ONLY artifact
+        if: ${{ inputs.test_anykernel }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kebab-sukisu-4.19-TEST-ONLY-${{ env.PROJECT_SHORT_SHA }}
+          path: |
+            dist/${{ env.TEST_ZIP_NAME }}
+            dist/Image
+            dist/kernel.config
+            dist/build-info.txt
+            dist/SHA256SUMS
+            dist/applied-patches.txt
+            dist/root-readiness.txt
+            dist/build.log
+            dist/static-audit.txt
+            dist/TEST-ONLY-NOT-FOR-RELEASE.txt
+            dist/DEVICE_TEST_PLAN.md
+            dist/anykernel-zip-contents.txt
+          if-no-files-found: error
           compression-level: 6
           retention-days: 14
