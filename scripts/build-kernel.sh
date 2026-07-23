@@ -215,8 +215,10 @@ locale=${LC_ALL}
 timezone=${TZ}
 EOF
 
-echo "KERNEL_SHA=${kernel_sha}" >> "${GITHUB_ENV}"
-echo "SUKISU_SHA=${sukisu_sha}" >> "${GITHUB_ENV}"
-echo "KERNEL_RELEASE=${kernel_release}" >> "${GITHUB_ENV}"
-echo "PROJECT_SHA=${project_sha}" >> "${GITHUB_ENV}"
-echo "PROJECT_SHORT_SHA=${project_sha:0:7}" >> "${GITHUB_ENV}"
+{
+  echo "KERNEL_SHA=${kernel_sha}"
+  echo "SUKISU_SHA=${sukisu_sha}"
+  echo "KERNEL_RELEASE=${kernel_release}"
+  echo "PROJECT_SHA=${project_sha}"
+  echo "PROJECT_SHORT_SHA=${project_sha:0:7}"
+} >> "${GITHUB_ENV}"

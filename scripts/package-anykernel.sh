@@ -111,6 +111,8 @@ sed -i \
     "${ZIP_NAME}" > SHA256SUMS
 )
 
-echo "TEST_ZIP_NAME=${ZIP_NAME}" >> "${GITHUB_ENV}"
-echo "PROJECT_SHA=${PROJECT_SHA}" >> "${GITHUB_ENV}"
-echo "PROJECT_SHORT_SHA=${SHORT_SHA}" >> "${GITHUB_ENV}"
+{
+  echo "TEST_ZIP_NAME=${ZIP_NAME}"
+  echo "PROJECT_SHA=${PROJECT_SHA}"
+  echo "PROJECT_SHORT_SHA=${SHORT_SHA}"
+} >> "${GITHUB_ENV}"

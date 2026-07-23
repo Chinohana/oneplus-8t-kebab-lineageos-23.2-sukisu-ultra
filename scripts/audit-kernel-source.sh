@@ -18,7 +18,7 @@ mkdir -p "$(dirname "${audit_output}")"
 count_series_entries() {
   local series_file="$1"
 
-  grep -Ev '^[[:space:]]*(#|$)' "${series_file}" | wc -l
+  grep -Evc '^[[:space:]]*(#|$)' "${series_file}"
 }
 
 kernel_patch_count="$(
