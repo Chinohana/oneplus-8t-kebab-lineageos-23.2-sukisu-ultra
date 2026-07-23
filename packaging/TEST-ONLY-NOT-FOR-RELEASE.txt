@@ -1,0 +1,14 @@
+TEST ONLY - NOT FOR RELEASE
+
+This package is only for a device owner's experimental test on:
+
+- OnePlus 8T, device codename kebab
+- LineageOS 23.2
+- Android 16
+
+No device boot, Root, or SELinux behavior has been verified yet. The package
+may fail to boot or cause a bootloop. Back up the currently working boot image
+before flashing and have Lineage Recovery or fastboot ready for rollback.
+
+Do not publish this package or forward it to ordinary users. It is not stable,
+safe, release-ready, or suitable for any other device or ROM.

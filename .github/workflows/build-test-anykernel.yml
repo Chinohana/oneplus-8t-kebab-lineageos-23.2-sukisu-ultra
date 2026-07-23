@@ -1,0 +1,158 @@
+name: Build TEST-ONLY kebab AnyKernel3
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kebab-test-anykernel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-package:
+    name: LineageOS 23.2 / kebab / TEST-ONLY AnyKernel3
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    env:
+      CLANG_VERSION: clang-r563880c
+      KERNEL_DIR: /tmp/kebab-kernel
+      OUT_DIR: /tmp/kebab-out
+      TOOLCHAIN_DIR: /tmp/kebab-clang
+
+    steps:
+      - name: Check out build configuration
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Load immutable source locks
+        shell: bash
+        run: |
+          set -a
+          source build.lock
+          source packaging/anykernel.lock
+          set +a
+          for name in KERNEL_COMMIT SUKISU_COMMIT TOOLCHAIN_COMMIT ANYKERNEL3_COMMIT; do
+            value="${!name}"
+            [[ "${value}" =~ ^[0-9a-f]{40}$ ]] || {
+              echo "Invalid ${name}: ${value}" >&2
+              exit 1
+            }
+            echo "${name}=${value}" >> "${GITHUB_ENV}"
+          done
+
+      - name: Install build and audit dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            bc bison build-essential ca-certificates device-tree-compiler \
+            flex git libelf-dev libssl-dev lz4 python3 rsync shellcheck \
+            unzip zip zstd
+
+      - name: Audit project scripts and packaging guardrails
+        shell: bash
+        run: |
+          git diff --check
+          bash -n scripts/*.sh
+          sh -n packaging/anykernel.sh
+          shellcheck scripts/*.sh
+          grep -Fqx 'device.name1=kebab' packaging/anykernel.sh
+          grep -Fqx 'supported.versions=16' packaging/anykernel.sh
+          grep -Fqx 'IS_SLOT_DEVICE=1' packaging/anykernel.sh
+          grep -Fqx 'SLOT_SELECT=active' packaging/anykernel.sh
+          grep -Fqx 'PATCH_VBMETA_FLAG=0' packaging/anykernel.sh
+          grep -Fqx 'NO_MAGISK_CHECK=1' packaging/anykernel.sh
+          if grep -REiq \
+            'SLOT_SELECT=inactive|PATCH_VBMETA_FLAG=(auto|1)|flash_generic[[:space:]]+dtbo|by-name/(dtbo|vbmeta)' \
+            packaging scripts/package-anykernel.sh; then
+            echo "Forbidden AnyKernel3 partition or verification behavior found" >&2
+            exit 1
+          fi
+
+      - name: Fetch locked LineageOS kernel source
+        run: |
+          git init "${KERNEL_DIR}"
+          git -C "${KERNEL_DIR}" remote add origin \
+            https://github.com/LineageOS/android_kernel_oneplus_sm8250.git
+          git -C "${KERNEL_DIR}" fetch --depth=1 origin "${KERNEL_COMMIT}"
+          git -C "${KERNEL_DIR}" checkout --detach FETCH_HEAD
+          test "$(git -C "${KERNEL_DIR}" rev-parse HEAD)" = "${KERNEL_COMMIT}"
+
+      - name: Fetch locked Android 16 Clang toolchain
+        run: |
+          toolchain_repo="${RUNNER_TEMP}/clang-prebuilts"
+          git init "${toolchain_repo}"
+          git -C "${toolchain_repo}" remote add origin \
+            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86
+          git -C "${toolchain_repo}" sparse-checkout init
+          git -C "${toolchain_repo}" sparse-checkout set "${CLANG_VERSION}"
+          git -C "${toolchain_repo}" fetch --depth=1 --filter=blob:none origin \
+            "${TOOLCHAIN_COMMIT}"
+          git -C "${toolchain_repo}" checkout --detach FETCH_HEAD
+          test "$(git -C "${toolchain_repo}" rev-parse HEAD)" = "${TOOLCHAIN_COMMIT}"
+          mv "${toolchain_repo}/${CLANG_VERSION}" "${TOOLCHAIN_DIR}"
+          "${TOOLCHAIN_DIR}/bin/clang" --version
+
+      - name: Rebuild kernel Image
+        shell: bash
+        run: |
+          mkdir -p dist
+          set -o pipefail
+          bash scripts/build-kernel.sh 2>&1 | tee dist/build.log
+
+      - name: Build approved TEST-ONLY AnyKernel3 ZIP
+        shell: bash
+        env:
+          ANYKERNEL3_PACKAGING_APPROVED: yes
+        run: bash scripts/package-anykernel.sh
+
+      - name: Verify TEST-ONLY deliverables
+        shell: bash
+        run: |
+          test -s "dist/${TEST_ZIP_NAME}"
+          for file in \
+            Image \
+            kernel.config \
+            build-info.txt \
+            SHA256SUMS \
+            applied-patches.txt \
+            root-readiness.txt \
+            build.log \
+            static-audit.txt \
+            TEST-ONLY-NOT-FOR-RELEASE.txt \
+            DEVICE_TEST_PLAN.md \
+            anykernel-zip-contents.txt; do
+            test -s "dist/${file}"
+          done
+          (
+            cd dist
+            sha256sum -c SHA256SUMS
+            unzip -t "${TEST_ZIP_NAME}"
+          )
+          grep -Fqx 'flashable_package=yes' dist/root-readiness.txt
+          grep -Fqx 'ready_for_owner_device_experimental_test=yes' dist/root-readiness.txt
+          grep -Fqx 'release_ready=no' dist/root-readiness.txt
+          grep -Fqx 'device_boot_test=no' dist/root-readiness.txt
+          grep -Fqx 'root_functional_test=no' dist/root-readiness.txt
+          grep -Fqx 'root_verified_on_device=no' dist/root-readiness.txt
+
+      - name: Upload owner TEST-ONLY artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kebab-sukisu-4.19-TEST-ONLY-${{ env.PROJECT_SHORT_SHA }}
+          path: |
+            dist/${{ env.TEST_ZIP_NAME }}
+            dist/Image
+            dist/kernel.config
+            dist/build-info.txt
+            dist/SHA256SUMS
+            dist/applied-patches.txt
+            dist/root-readiness.txt
+            dist/build.log
+            dist/static-audit.txt
+            dist/TEST-ONLY-NOT-FOR-RELEASE.txt
+            dist/DEVICE_TEST_PLAN.md
+            dist/anykernel-zip-contents.txt
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 14
