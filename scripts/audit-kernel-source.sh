@@ -41,8 +41,9 @@ grep -Fq 'dynamic sepolicy is disabled: no safe copy-on-write policy installer' 
 grep -Fq 'SukiSU-4.19: dynamic sepolicy rejected wildcard allow' "${rules_file}"
 grep -Fq 'SukiSU-4.19: dynamic sepolicy rejected permissive request' "${rules_file}"
 
-if ! grep -Fq 'DIAGNOSTIC: skipping syscall table patch' "${rules_file}"; then
-  echo "Diagnostic syscall skip not found" >&2
+syscall_hook_file="${sukisu_dir}/kernel/hook/arm64/syscall_hook.c"
+if ! grep -Fq 'DIAGNOSTIC: skipping syscall table patch' "${syscall_hook_file}"; then
+  echo "Diagnostic syscall skip not found in ${syscall_hook_file}" >&2
   exit 1
 fi
 
