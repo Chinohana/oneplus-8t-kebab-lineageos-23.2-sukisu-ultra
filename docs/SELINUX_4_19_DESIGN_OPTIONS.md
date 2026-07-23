@@ -1,5 +1,11 @@
 # Linux 4.19 SELinux 实现路线决策
 
+> 历史说明：本文是旧基线面向正式发布时的设计决策。本轮目标缩小为设备
+> 所有者的 TEST-ONLY 首次实验测试，已经恢复非事务的 legacy in-place
+> policydb 修改，同时保持 enforcing、禁止 `ksu` permissive 和 wildcard
+> allow。本文的发布级建议与风险分析仍有效，但不代表当前代码仍为
+> `unsupported`。
+
 ## 决策状态与范围
 
 本文只记录架构选择和源码审计，不实现任何 SELinux 运行时代码。本轮继续
