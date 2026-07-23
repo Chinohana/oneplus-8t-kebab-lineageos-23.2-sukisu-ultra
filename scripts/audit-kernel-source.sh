@@ -29,16 +29,25 @@ sukisu_patch_count="$(
 )"
 total_patch_count=$((kernel_patch_count + sukisu_patch_count))
 
-[[ "${kernel_patch_count}" -eq 3 ]]
-[[ "${sukisu_patch_count}" -eq 16 ]]
-[[ "${total_patch_count}" -eq 19 ]]
+[[ "${kernel_patch_count}" -eq 4 ]]
+[[ "${sukisu_patch_count}" -eq 17 ]]
+[[ "${total_patch_count}" -eq 21 ]]
 
-grep -Fq 'db = &selinux_state.ss->policydb;' "${rules_file}"
-grep -Fq 'SukiSU-4.19: SELinux boot rule application begin' "${rules_file}"
-grep -Fq 'SukiSU-4.19: SELinux boot rule application succeeded' "${rules_file}"
-grep -Fq 'SukiSU-4.19: dynamic sepolicy request begin' "${rules_file}"
+grep -Fq 'int ksu_apply_kernelsu_policydb_rules(struct policydb *db)' "${rules_file}"
+grep -Fq 'SukiSU-4.19: pre-install SELinux rule injection begin' "${rules_file}"
+grep -Fq 'SukiSU-4.19: pre-install SELinux rule injection succeeded' "${rules_file}"
+grep -Fq 'second-stage active-policy mutation skipped' "${rules_file}"
+grep -Fq 'dynamic sepolicy is disabled: no safe copy-on-write policy installer' "${rules_file}"
 grep -Fq 'SukiSU-4.19: dynamic sepolicy rejected wildcard allow' "${rules_file}"
 grep -Fq 'SukiSU-4.19: dynamic sepolicy rejected permissive request' "${rules_file}"
+
+legacy_active_assignments="$(
+  grep -Fc 'db = &selinux_state.ss->policydb;' "${rules_file}" || true
+)"
+if [[ "${legacy_active_assignments}" -ne 1 ]]; then
+  echo "Unexpected number of unreachable legacy active-policy assignments: ${legacy_active_assignments}" >&2
+  exit 1
+fi
 
 if grep -Fq 'KernelSU SELinux policy mutation is unsupported on this kernel' \
   "${rules_file}"; then
@@ -75,9 +84,9 @@ cat > "${audit_output}" <<EOF
 patch_replay_count=${total_patch_count}
 kernel_patch_count=${kernel_patch_count}
 sukisu_patch_count=${sukisu_patch_count}
-legacy_policydb_path=present
-selinux_boot_rule_implementation=present
-dynamic_sepolicy_implementation=present
+legacy_policydb_path=pre_install_only
+selinux_boot_rule_implementation=pre_install_hook
+dynamic_sepolicy_implementation=disabled_on_linux_4_19
 selinux_hide_linux_4_19=unsupported
 ksu_domain_permissive=no
 unconditional_permissive=no

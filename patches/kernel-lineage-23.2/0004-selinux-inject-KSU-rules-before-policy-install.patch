@@ -1,0 +1,77 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Thu, 23 Jul 2026 23:00:00 +0800
+Subject: [PATCH] selinux: inject KSU rules before policy install
+
+Linux 4.19 does not provide the RCU-managed selinux_policy object used by
+modern KernelSU.  Do not mutate the active policydb after init has started
+using it.  Instead, let the built-in KSU integration update each freshly
+parsed policy while it is still private to security_load_policy().
+
+All allocating policy edits therefore run before policy_rwlock is taken.
+The existing SELinux install path remains responsible for the short locked
+swap, SID conversion, AVC reset, notifications, and destruction of the old
+policy.
+---
+ security/selinux/ss/services.c | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/security/selinux/ss/services.c b/security/selinux/ss/services.c
+index 00338355e973..000000000000 100644
+--- a/security/selinux/ss/services.c
++++ b/security/selinux/ss/services.c
+@@ -68,6 +68,10 @@
+ #include "ebitmap.h"
+ #include "audit.h"
+ 
++#ifdef CONFIG_KSU
++extern int ksu_apply_kernelsu_policydb_rules(struct policydb *policydb);
++#endif
++
+ /* Policy capability names */
+ const char *selinux_policycap_names[__POLICYDB_CAPABILITY_MAX] = {
+ 	"network_peer_controls",
+@@ -2169,6 +2173,20 @@ int security_load_policy(struct selinux_state *state, void *data, size_t len)
+ 			goto out;
+ 		}
+ 
++#ifdef CONFIG_KSU
++		/*
++		 * policydb is not active yet.  KSU may allocate and extend it
++		 * here without racing SELinux readers of state->ss->policydb.
++		 */
++		rc = ksu_apply_kernelsu_policydb_rules(policydb);
++		if (rc) {
++			pr_err("SELinux: KSU rule injection failed: %d\n", rc);
++			kfree(newsidtab);
++			policydb_destroy(policydb);
++			goto out;
++		}
++#endif
++
+ 		policydb->len = len;
+ 		rc = selinux_set_mapping(policydb, secclass_map,
+ 					 &state->ss->map);
+@@ -2203,6 +2221,20 @@ int security_load_policy(struct selinux_state *state, void *data, size_t len)
+ 		goto out;
+ 	}
+ 
++#ifdef CONFIG_KSU
++	/*
++	 * newpolicydb remains private until the native write-locked install
++	 * below, so no active-policy reader can observe a partial KSU edit.
++	 */
++	rc = ksu_apply_kernelsu_policydb_rules(newpolicydb);
++	if (rc) {
++		pr_err("SELinux: KSU rule injection failed on policy reload: %d\n", rc);
++		policydb_destroy(newpolicydb);
++		kfree(newsidtab);
++		goto out;
++	}
++#endif
++
+ 	newpolicydb->len = len;
+ 	/* If switching between different policy types, log MLS status */
+ 	if (policydb->mls_enabled && !newpolicydb->mls_enabled)
+-- 
+2.53.0.windows.2

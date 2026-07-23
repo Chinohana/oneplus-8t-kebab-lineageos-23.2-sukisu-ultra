@@ -14,3 +14,4 @@
 0014-feature-report-selinux_hide-unsupported-on-Linux-4.1.patch
 0015-sukisu-restore-experimental-Linux-4.19-SELinux-rules.patch
 0016-build-make-SukiSU-version-metadata-deterministic.patch
+0017-selinux-use-pre-install-policy-hook-on-Linux-4.19.patch

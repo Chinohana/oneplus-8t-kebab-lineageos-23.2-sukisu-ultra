@@ -1,0 +1,125 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Thu, 23 Jul 2026 23:00:00 +0800
+Subject: [PATCH] selinux: use pre-install policy hook on Linux 4.19
+
+The Linux 4.19 compatibility path used a private mutex while modifying the
+active SELinux policydb.  SELinux readers use policy_rwlock instead, so they
+could observe partially replaced flex_arrays or dereference arrays that the
+writer had already freed.
+
+Expose the fixed boot-rule table to security_load_policy(), which calls it
+on an inactive freshly parsed policydb.  The normal second-stage callback
+now only records that injection already happened.
+
+Dynamic sepolicy also used the unsafe active-policy mutation route.  Disable
+that optional interface on Linux 4.19 until it has a real copy-on-write
+implementation.  Basic KSU domain creation and fixed boot permissions remain
+available.
+---
+ kernel/selinux/rules.c | 49 ++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 30 insertions(+), 19 deletions(-)
+
+diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
+index 34145d0..0000000 100644
+--- a/kernel/selinux/rules.c
++++ b/kernel/selinux/rules.c
+@@ -18,9 +18,6 @@
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+ struct selinux_policy *backup_sepolicy;
+ #define SELINUX_POLICY_INSTEAD_SELINUX_SS
+-#else
+-/* Linux 4.19 keeps the active policy in selinux_state.ss. */
+-static DEFINE_MUTEX(ksu_rules);
+ #endif
+ 
+ #define ALL NULL
+@@ -198,6 +195,27 @@ static bool ksu_apply_legacy_kernelsu_rules(struct policydb *db)
+     return success;
+ }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
++int ksu_apply_kernelsu_policydb_rules(struct policydb *db)
++{
++    bool success;
++
++    if (!db)
++        return -EINVAL;
++
++    pr_info("SukiSU-4.19: pre-install SELinux rule injection begin\n");
++    success = ksu_apply_legacy_kernelsu_rules(db);
++    if (!success) {
++        pr_err("SukiSU-4.19: pre-install SELinux rule injection failed\n");
++        return -EINVAL;
++    }
++
++    pr_info("SukiSU-4.19: pre-install SELinux rule injection succeeded\n");
++    return 0;
++}
++#endif
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0))
+ extern int avc_ss_reset(u32 seqno);
+ #else
+@@ -238,14 +256,15 @@ static void reset_avc_cache()
+ #endif
+     selinux_xfrm_notify_policyload();
+ }
++#endif
+ 
+ void apply_kernelsu_rules()
+ {
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+     struct selinux_policy *pol, *old_pol = selinux_state.policy;
+-#endif
+     struct policydb *db;
+     bool success;
++#endif
+ 
+     if (!getenforce()) {
+         pr_info("SELinux permissive or disabled, apply rules!\n");
+@@ -264,21 +283,8 @@ void apply_kernelsu_rules()
+     if (!success)
+         pr_err("SukiSU-4.19: SELinux boot rule application completed with failed rules\n");
+ #else
+-    mutex_lock(&ksu_rules);
+-    pr_info("SukiSU-4.19: SELinux boot rule application begin; enforcing=%d\n", getenforce());
+-    if (!selinux_state.ss) {
+-        pr_err("SukiSU-4.19: SELinux boot rule application failed: selinux_state.ss is NULL\n");
+-        mutex_unlock(&ksu_rules);
+-        return;
+-    }
+-    db = &selinux_state.ss->policydb;
+-    success = ksu_apply_legacy_kernelsu_rules(db);
+-    reset_avc_cache();
+-    if (success)
+-        pr_info("SukiSU-4.19: SELinux boot rule application succeeded; ksu and ksu_file created\n");
+-    else
+-        pr_err("SukiSU-4.19: SELinux boot rule application completed with failed rules\n");
+-    mutex_unlock(&ksu_rules);
++    pr_info("SukiSU-4.19: SELinux rules were injected before policy installation; "
++            "second-stage active-policy mutation skipped\n");
+     return;
+ #endif
+ 
+@@ -588,7 +594,11 @@ static int apply_one_sepolicy_cmd(struct policydb *db, const struct sepol_data *
+ 
+ int handle_sepolicy(void __user *user_data, u64 data_len)
+ {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
++    pr_err("SukiSU-4.19: dynamic sepolicy is disabled: no safe copy-on-write policy installer\n");
++    return -EOPNOTSUPP;
++#else
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+     struct selinux_policy *pol, *old_pol;
+ #endif
+     struct policydb *db;
+@@ -718,4 +728,5 @@ out_free:
+                 success_cmd_count);
+ 
+     return ret;
++#endif
+ }
+-- 
+2.53.0.windows.2

@@ -1,3 +1,4 @@
 0001-build-integrate-SukiSU-through-drivers-Kconfig.patch
 0002-compat-backport-path_umount-for-SukiSU.patch
 0003-compat-backport-restricted-path_mount-for-SukiSU-nam.patch
+0004-selinux-inject-KSU-rules-before-policy-install.patch

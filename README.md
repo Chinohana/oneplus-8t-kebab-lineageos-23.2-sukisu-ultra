@@ -12,16 +12,16 @@
   `TEST-ONLY` 的 AnyKernel3 ZIP；它不创建 GitHub Release。
 - 当前仍没有任何真机启动、Root 功能或发布验证。
 - KPM 关闭；SUSFS 未包含。
-- Linux 4.19 的 `handle_sepolicy()` 已恢复显式规则请求；wildcard allow 和
-  permissive 请求会被拒绝并记录原因。
+- Linux 4.19 的动态 `handle_sepolicy()` 暂时返回 `-EOPNOTSUPP`；在完成安全
+  的 copy-on-write 安装器前，不允许它修改活动策略。
 - `selinux_hide` 在 Linux 4.19 上不受支持。
-- 启动时 `apply_kernelsu_rules()` 通过旧内核 in-place policydb 路径创建
-  `ksu` 与 `ksu_file`，应用显式权限并刷新 AVC；不设置 permissive，也不
-  使用 wildcard allow。
+- 每次 SELinux 策略加载时，KSU 在新策略尚未安装、尚无并发读者的阶段创建
+  `ksu` 与 `ksu_file` 并应用显式权限；最终切换、SID 转换、AVC 刷新和旧
+  策略释放仍由 Linux 4.19 原生 `security_load_policy()` 完成。
 - Root 凭据只有在 `u:r:ksu:s0` 成功解析时才会提交，避免 UID 0 长期留在
   原 Android domain。
-- 该 legacy 路径非事务、无回滚，且没有解决活动 policydb 读者同步的全部
-  理论风险；只为设备所有者首次实验测试恢复，不是发布级实现。
+- 已删除对活动 policydb 的原地修改路径；当前实现仍需设备所有者验证启动、
+  SID 解析和 Root 行为，因此仍不是发布级实现。
 - 历史 GitHub Actions `#29940784150` 中的 ZIP 是未批准历史产物，不应刷入设备。
 
 ## 功能状态
@@ -32,7 +32,7 @@
 | Manager signature | completed | 固定 SukiSU 源码中的 Manager 签名校验路径已编译；此项不代表 Manager 或 Root 已通过真机验证。 |
 | KSU core compiled | completed | `.config` 要求 `CONFIG_KSU=y` 和 `CONFIG_KSU_MANUAL_SU=y`。 |
 | Root domain | compiled, device-unverified | 启动规则创建 `ksu` / `ksu_file`；真机 SID 和 domain 切换尚未验证。 |
-| Dynamic sepolicy | compiled, constrained | 只接受显式规则；拒绝 wildcard allow 与 permissive。 |
+| Dynamic sepolicy | disabled on Linux 4.19 | 缺少安全 copy-on-write 安装器，返回 `-EOPNOTSUPP`。 |
 | selinux_hide | unsupported | Linux 4.19 不注册该功能处理器。 |
 | KPM | disabled | 稳定配置要求 `# CONFIG_KPM is not set`。 |
 | SUSFS | disabled | 源码补丁和配置均未包含 SUSFS。 |
