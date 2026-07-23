@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Thu, 24 Jul 2026 01:30:00 +0800
+Subject: [PATCH] diagnostic: skip syscall table patch on Linux 4.19
+
+SukiSU-Ultra patches the read-only sys_call_table in-place using fixmap +
+stop_machine + copy_to_kernel_nofault.  KernelSU-Next on the same 4.19
+device does not do this; it only uses kprobes and tracepoints.
+
+Both old and new SELinux code crash identically to fastboot within 5
+seconds, which rules out SELinux as the cause and points to this earlier
+initcall.  Skip the syscall table patching on 4.19 to confirm the
+hypothesis.  ksu_ksud_init's read/fstat hooks also become no-ops because
+ksu_syscall_table stays NULL.
+
+This is a diagnostic patch; if the device boots, the crash is confirmed
+in ksu_syscall_hook_init / ksu_patch_text.
+---
+ kernel/hook/arm64/syscall_hook.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/kernel/hook/arm64/syscall_hook.c b/kernel/hook/arm64/syscall_hook.c
+index f8d052c..0000000 100644
+--- a/kernel/hook/arm64/syscall_hook.c
++++ b/kernel/hook/arm64/syscall_hook.c
+@@ -219,6 +219,10 @@ bool ksu_has_syscall_hook(int nr)
+ 
+ void __init ksu_syscall_hook_init(void)
+ {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
++    pr_info("SukiSU-4.19: DIAGNOSTIC: skipping syscall table patch on Linux 4.19\n");
++    return;
++#endif
+     int ni_slot;
+ 
+     memset(syscall_hooks, 0, sizeof(syscall_hooks));
+-- 
+2.53.0.windows.2

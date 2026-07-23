@@ -45,6 +45,7 @@ require_config 'CONFIG_SECURITY_SELINUX=y'
 require_patch 'sukisu-v4.1.3-linux-4.19/0014-feature-report-selinux_hide-unsupported-on-Linux-4.1.patch'
 require_patch 'sukisu-v4.1.3-linux-4.19/0015-sukisu-restore-experimental-Linux-4.19-SELinux-rules.patch'
 require_patch 'sukisu-v4.1.3-linux-4.19/0017-selinux-use-pre-install-policy-hook-on-Linux-4.19.patch'
+require_patch 'sukisu-v4.1.3-linux-4.19/0018-diagnostic-skip-syscall-table-patch-on-4.19.patch'
 require_patch 'kernel-lineage-23.2/0004-selinux-inject-KSU-rules-before-policy-install.patch'
 
 if grep -Eq '^CONFIG_(KSU_)?SUSFS=y$' "${config_file}" ||

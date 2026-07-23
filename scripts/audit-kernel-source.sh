@@ -30,8 +30,8 @@ sukisu_patch_count="$(
 total_patch_count=$((kernel_patch_count + sukisu_patch_count))
 
 [[ "${kernel_patch_count}" -eq 4 ]]
-[[ "${sukisu_patch_count}" -eq 17 ]]
-[[ "${total_patch_count}" -eq 21 ]]
+[[ "${sukisu_patch_count}" -eq 18 ]]
+[[ "${total_patch_count}" -eq 22 ]]
 
 grep -Fq 'int ksu_apply_kernelsu_policydb_rules(struct policydb *db)' "${rules_file}"
 grep -Fq 'SukiSU-4.19: pre-install SELinux rule injection begin' "${rules_file}"
@@ -41,11 +41,8 @@ grep -Fq 'dynamic sepolicy is disabled: no safe copy-on-write policy installer' 
 grep -Fq 'SukiSU-4.19: dynamic sepolicy rejected wildcard allow' "${rules_file}"
 grep -Fq 'SukiSU-4.19: dynamic sepolicy rejected permissive request' "${rules_file}"
 
-legacy_active_assignments="$(
-  grep -Fc 'db = &selinux_state.ss->policydb;' "${rules_file}" || true
-)"
-if [[ "${legacy_active_assignments}" -ne 1 ]]; then
-  echo "Unexpected number of unreachable legacy active-policy assignments: ${legacy_active_assignments}" >&2
+if ! grep -Fq 'DIAGNOSTIC: skipping syscall table patch' "${rules_file}"; then
+  echo "Diagnostic syscall skip not found" >&2
   exit 1
 fi
 

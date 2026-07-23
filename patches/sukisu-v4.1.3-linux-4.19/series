@@ -15,3 +15,4 @@
 0015-sukisu-restore-experimental-Linux-4.19-SELinux-rules.patch
 0016-build-make-SukiSU-version-metadata-deterministic.patch
 0017-selinux-use-pre-install-policy-hook-on-Linux-4.19.patch
+0018-diagnostic-skip-syscall-table-patch-on-4.19.patch
