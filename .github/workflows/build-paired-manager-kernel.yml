@@ -69,12 +69,10 @@ jobs:
             bc bison build-essential ca-certificates device-tree-compiler \
             flex git libelf-dev libssl-dev lz4 openssl python3 rsync \
             shellcheck unzip zip zstd
-          sdkmanager \
-            "platforms;android-34" \
-            "build-tools;34.0.0" \
-            "platforms;android-37" \
-            "build-tools;37.0.0" \
-            "ndk;29.0.14206865"
+          test -x "${ANDROID_SDK_ROOT}/build-tools/34.0.0/aapt2"
+          test -x "${ANDROID_SDK_ROOT}/build-tools/37.0.0/apksigner"
+          test -x \
+            "${ANDROID_SDK_ROOT}/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
           echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/29.0.14206865" \
             >> "${GITHUB_ENV}"
 
