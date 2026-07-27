@@ -58,6 +58,23 @@ if grep -Eq '^CONFIG_(KSU_)?SUSFS=y$' "${config_file}" ||
   exit 1
 fi
 
+manager_signature_mode=official_only
+paired_manager_certificate_size=none
+paired_manager_certificate_sha256=none
+if [[ -n "${KSU_EXPECTED_SIZE2:-}" || -n "${KSU_EXPECTED_HASH2:-}" ]]; then
+  [[ "${KSU_EXPECTED_SIZE2:-}" =~ ^0x[0-9a-fA-F]{4}$ ]] || {
+    echo "Invalid paired Manager certificate size: ${KSU_EXPECTED_SIZE2:-unset}" >&2
+    exit 1
+  }
+  [[ "${KSU_EXPECTED_HASH2:-}" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "Invalid paired Manager certificate SHA-256" >&2
+    exit 1
+  }
+  manager_signature_mode=official_plus_paired_ephemeral
+  paired_manager_certificate_size="${KSU_EXPECTED_SIZE2}"
+  paired_manager_certificate_sha256="${KSU_EXPECTED_HASH2}"
+fi
+
 cat > "${output_file}" <<EOF
 image_compiled=yes
 flashable_package=no
@@ -78,6 +95,9 @@ wildcard_allow=no
 legacy_policy_mutation=none_active_policy_is_not_modified
 kpm=disabled
 susfs=absent
+manager_signature_mode=${manager_signature_mode}
+paired_manager_certificate_size=${paired_manager_certificate_size}
+paired_manager_certificate_sha256=${paired_manager_certificate_sha256}
 release_ready=no
 kernel_release=${kernel_release}
 evidence_config=CONFIG_KSU=y,CONFIG_KSU_MANUAL_SU=y,CONFIG_SECURITY_SELINUX=y,CONFIG_KPM=n

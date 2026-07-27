@@ -15,6 +15,7 @@ SHORT_SHA="${PROJECT_SHA:0:7}"
 ZIP_NAME="kebab-lineage-23.2-sukisu-ultra-TEST-ONLY-${SHORT_SHA}.zip"
 WARNING_FILE="${ROOT_DIR}/packaging/TEST-ONLY-NOT-FOR-RELEASE.txt"
 TEST_PLAN="${ROOT_DIR}/docs/DEVICE_TEST_PLAN.md"
+PAIRED_MANAGER_INSTALL="${ROOT_DIR}/docs/PAIRED_MANAGER_INSTALL.md"
 
 test -s "${DIST_DIR}/Image"
 test -s "${DIST_DIR}/kernel.config"
@@ -24,6 +25,7 @@ test -s "${DIST_DIR}/root-readiness.txt"
 test -s "${DIST_DIR}/build.log"
 test -s "${WARNING_FILE}"
 test -s "${TEST_PLAN}"
+test -s "${PAIRED_MANAGER_INSTALL}"
 
 # shellcheck disable=SC1091
 source "${ROOT_DIR}/packaging/anykernel.lock"
@@ -98,6 +100,7 @@ fi
 
 cp "${WARNING_FILE}" "${DIST_DIR}/TEST-ONLY-NOT-FOR-RELEASE.txt"
 cp "${TEST_PLAN}" "${DIST_DIR}/DEVICE_TEST_PLAN.md"
+cp "${PAIRED_MANAGER_INSTALL}" "${DIST_DIR}/PAIRED_MANAGER_INSTALL.md"
 
 sed -i \
   -e 's/^flashable_package=no$/flashable_package=yes/' \

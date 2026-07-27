@@ -1,0 +1,62 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Mon, 27 Jul 2026 22:30:00 +0800
+Subject: [PATCH] service: make root trampoline read-only before load
+
+Android 14 and newer reject writable DEX/JAR files.  RootService writes
+main.jar into the app cache and immediately asks app_process to load it,
+which aborts with a SecurityException.
+
+Delete the previous trampoline before recreating it, then remove every
+write bit after the stream is closed and before app_process starts.
+RootServiceManager runs this launch path on the main thread, so no
+consumer can observe the file between these operations.
+
+Give the locally published modules a distinct version so the manager
+cannot accidentally resolve the unpatched JitPack artifact.
+---
+ build.gradle.kts                                                   | 4 ++++
+ .../topjohnwu/superuser/internal/RootServiceManager.java           | 7 +++++++
+ 2 files changed, 11 insertions(+)
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 9ae9b3a..0000000 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -8,6 +8,10 @@ plugins {
+     id("com.android.library") version "8.5.0" apply false
+ }
+ 
++allprojects {
++    version = "6.0.0-owner-readonly"
++}
++
+ val dlPackageList by tasks.registering {
+     outputs.upToDateWhen { false }
+     doLast {
+diff --git a/service/src/main/java/com/topjohnwu/superuser/internal/RootServiceManager.java b/service/src/main/java/com/topjohnwu/superuser/internal/RootServiceManager.java
+index 0000000..0000000 100644
+--- a/service/src/main/java/com/topjohnwu/superuser/internal/RootServiceManager.java
++++ b/service/src/main/java/com/topjohnwu/superuser/internal/RootServiceManager.java
+@@ -168,11 +168,18 @@ public class RootServiceManager implements Handler.Callback {
+ 
+             Context ctx = Utils.getDeContext();
+             File mainJar = new File(ctx.getCacheDir(), "main.jar");
++            if (mainJar.exists() && !mainJar.delete()) {
++                throw new IllegalStateException("Cannot replace stale root trampoline");
++            }
+ 
+             // Dump main.jar as trampoline
+             try (InputStream in = ctx.getResources().getAssets().open("main.jar");
+                  OutputStream out = new FileOutputStream(mainJar)) {
+                 Utils.pump(in, out);
+             }
++            if (!mainJar.setReadOnly()) {
++                mainJar.delete();
++                throw new IllegalStateException("Cannot make root trampoline read-only");
++            }
+ 
+             String env = "";
+             String params = "";
+-- 
+2.53.0.windows.2
