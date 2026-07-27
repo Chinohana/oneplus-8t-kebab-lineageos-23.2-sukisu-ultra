@@ -175,7 +175,7 @@ test -x "${apksigner_bin}"
 sed -n '1,$p' "${DIST_DIR}/patched-manager-signature.txt"
 actual_cert_hash="$(
   awk -F ': ' \
-    '/^Signer #1 certificate SHA-256 digest:/ { print tolower($2); exit }' \
+    '/certificate SHA-256 digest:/ { print tolower($NF); exit }' \
     "${DIST_DIR}/patched-manager-signature.txt"
 )"
 [[ "${actual_cert_hash}" == "${cert_hash}" ]] || {
