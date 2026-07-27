@@ -6,6 +6,7 @@ SUKISU_MANAGER_DIR="${SUKISU_MANAGER_DIR:-${RUNNER_TEMP:-/tmp}/sukisu-manager}"
 LIBSU_DIR="${LIBSU_DIR:-${RUNNER_TEMP:-/tmp}/libsu-6.0.0}"
 DIST_DIR="${ROOT_DIR}/dist"
 MANAGER_KEY_ALIAS="owner-paired-key"
+KSU_APK_CERT_MAX_LENGTH=1024
 MANAGER_VERSION="v4.1.3-owner-libsu-readonly"
 LIBSU_PATCH_VERSION="6.0.0-owner-readonly"
 
@@ -89,7 +90,7 @@ umask 077
 keytool -genkeypair \
   -alias "${MANAGER_KEY_ALIAS}" \
   -keyalg RSA \
-  -keysize 3072 \
+  -keysize 2048 \
   -validity 3650 \
   -storepass "${keystore_password}" \
   -keypass "${key_password}" \
@@ -107,6 +108,10 @@ cert_size_dec="$(stat -c%s "${certificate_file}")"
 cert_size_hex="$(printf '0x%04x' "${cert_size_dec}")"
 cert_hash="$(sha256sum "${certificate_file}" | awk '{print $1}')"
 [[ "${cert_hash}" =~ ^[0-9a-f]{64}$ ]]
+if ((cert_size_dec > KSU_APK_CERT_MAX_LENGTH)); then
+  echo "Manager certificate is ${cert_size_dec} bytes, but the pinned SukiSU APK verifier accepts at most ${KSU_APK_CERT_MAX_LENGTH}" >&2
+  exit 1
+fi
 
 {
   printf '\nKEYSTORE_PASSWORD=%s\n' "${keystore_password}"
@@ -196,6 +201,7 @@ libsu_version=${LIBSU_PATCH_VERSION}
 libsu_fix=main_jar_read_only_before_app_process
 manager_certificate_size=${cert_size_hex}
 manager_certificate_sha256=${cert_hash}
+manager_certificate_verifier_limit=${KSU_APK_CERT_MAX_LENGTH}
 manager_private_key_retained=no
 manager_private_key_uploaded=no
 paired_project_commit=$(git -C "${ROOT_DIR}" rev-parse HEAD)

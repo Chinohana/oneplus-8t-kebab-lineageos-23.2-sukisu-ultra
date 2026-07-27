@@ -66,6 +66,10 @@ if [[ -n "${KSU_EXPECTED_SIZE2:-}" || -n "${KSU_EXPECTED_HASH2:-}" ]]; then
     echo "Invalid paired Manager certificate size: ${KSU_EXPECTED_SIZE2:-unset}" >&2
     exit 1
   }
+  if ((KSU_EXPECTED_SIZE2 > 1024)); then
+    echo "Paired Manager certificate exceeds the pinned SukiSU verifier's 1024-byte limit" >&2
+    exit 1
+  fi
   [[ "${KSU_EXPECTED_HASH2:-}" =~ ^[0-9a-f]{64}$ ]] || {
     echo "Invalid paired Manager certificate SHA-256" >&2
     exit 1
