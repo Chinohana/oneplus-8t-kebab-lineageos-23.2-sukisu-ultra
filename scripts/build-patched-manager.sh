@@ -172,10 +172,19 @@ apksigner_bin="${ANDROID_SDK_ROOT}/build-tools/37.0.0/apksigner"
 test -x "${apksigner_bin}"
 "${apksigner_bin}" verify --verbose --print-certs "${manager_apk}" \
   > "${DIST_DIR}/patched-manager-signature.txt"
-grep -Fq "Signer #1 certificate SHA-256 digest: ${cert_hash}" \
-  "${DIST_DIR}/patched-manager-signature.txt"
-unzip -Z1 "${manager_apk}" |
-  grep -Fx 'lib/arm64-v8a/libksud.so' > /dev/null
+sed -n '1,$p' "${DIST_DIR}/patched-manager-signature.txt"
+actual_cert_hash="$(
+  awk -F ': ' \
+    '/^Signer #1 certificate SHA-256 digest:/ { print tolower($2); exit }' \
+    "${DIST_DIR}/patched-manager-signature.txt"
+)"
+[[ "${actual_cert_hash}" == "${cert_hash}" ]] || {
+  echo "Manager certificate mismatch: expected ${cert_hash}, got ${actual_cert_hash:-missing}" >&2
+  exit 1
+}
+unzip -Z1 "${manager_apk}" > "${DIST_DIR}/patched-manager-contents.txt"
+grep -Fx 'lib/arm64-v8a/libksud.so' \
+  "${DIST_DIR}/patched-manager-contents.txt" > /dev/null
 
 cat > "${DIST_DIR}/patched-manager-build-info.txt" <<EOF
 manager_version=${MANAGER_VERSION}
@@ -203,6 +212,7 @@ EOF
   sha256sum \
     "${manager_apk_name}" \
     patched-manager-build-info.txt \
+    patched-manager-contents.txt \
     patched-manager-signature.txt \
     > PATCHED_MANAGER_SHA256SUMS
 )

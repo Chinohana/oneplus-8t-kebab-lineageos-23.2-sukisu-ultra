@@ -161,6 +161,7 @@ jobs:
           for file in \
             PATCHED_MANAGER_SHA256SUMS \
             patched-manager-build-info.txt \
+            patched-manager-contents.txt \
             patched-manager-signature.txt \
             patched-manager-build.log \
             paired-manager.env \
@@ -222,6 +223,7 @@ jobs:
             dist/PAIRED_BUNDLE_SHA256SUMS
             dist/PATCHED_MANAGER_SHA256SUMS
             dist/patched-manager-build-info.txt
+            dist/patched-manager-contents.txt
             dist/patched-manager-signature.txt
             dist/patched-manager-build.log
             dist/paired-manager.env
