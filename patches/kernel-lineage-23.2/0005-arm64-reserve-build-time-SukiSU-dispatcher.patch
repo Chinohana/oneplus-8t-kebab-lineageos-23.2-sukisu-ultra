@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Mon, 27 Jul 2026 18:00:00 +0800
+Subject: [PATCH] arm64: reserve build-time SukiSU dispatcher
+
+Use ARM64's first architecture-private syscall number for the SukiSU
+tracepoint dispatcher.  Initializing the entry at link time avoids a
+runtime write to the protected syscall table on SM8250.
+---
+ arch/arm64/kernel/sys.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/arch/arm64/kernel/sys.c b/arch/arm64/kernel/sys.c
+index 0000000..0000000 100644
+--- a/arch/arm64/kernel/sys.c
++++ b/arch/arm64/kernel/sys.c
+@@ -49,7 +49,14 @@ asmlinkage long __arm64_sys_ni_syscall(const struct pt_regs *__unused)
+ #undef __SYSCALL
+ #define __SYSCALL(nr, sym)	[nr] = __arm64_##sym,
+ 
++#ifdef CONFIG_KSU
++extern asmlinkage long ksu_syscall_dispatcher(const struct pt_regs *regs);
++#endif
++
+ const syscall_fn_t sys_call_table[__NR_syscalls] = {
+ 	[0 ... __NR_syscalls - 1] = __arm64_sys_ni_syscall,
+ #include <asm/unistd.h>
++#ifdef CONFIG_KSU
++	[__NR_arch_specific_syscall] = ksu_syscall_dispatcher,
++#endif
+ };
+-- 
+2.53.0.windows.2

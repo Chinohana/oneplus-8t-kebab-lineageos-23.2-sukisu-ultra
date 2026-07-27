@@ -2,3 +2,5 @@
 0002-compat-backport-path_umount-for-SukiSU.patch
 0003-compat-backport-restricted-path_mount-for-SukiSU-nam.patch
 0004-selinux-inject-KSU-rules-before-policy-install.patch
+0005-arm64-reserve-build-time-SukiSU-dispatcher.patch
+0006-arm64-allow-SukiSU-install-fd-supercall-through-sec.patch

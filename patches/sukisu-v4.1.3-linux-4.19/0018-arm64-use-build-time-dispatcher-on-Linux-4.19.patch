@@ -1,0 +1,130 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Mon, 27 Jul 2026 18:00:00 +0800
+Subject: [PATCH] arm64: use build-time dispatcher on Linux 4.19
+
+Writing the read-only syscall table at boot makes the OnePlus 8T return
+straight to fastboot.  Keep the SukiSU-Ultra tracepoint dispatcher, but
+place it in ARM64's first architecture-private syscall slot when the
+kernel is linked.  The companion kernel patch supplies that table entry.
+
+Route the temporary init.rc read and fstat hooks through the same
+dispatcher as well.  This removes every boot-time syscall-table write on
+Linux 4.19 while retaining the SukiSU v4.1.3 manager protocol and ksud
+boot integration.
+---
+ kernel/hook/arm64/syscall_hook.c | 26 ++++++++++++++++++++++++--
+ kernel/hook/syscall_hook.h       |  3 +++
+ kernel/runtime/ksud_integration.c | 18 +++++++++++++++++-
+ 3 files changed, 44 insertions(+), 3 deletions(-)
+
+diff --git a/kernel/hook/arm64/syscall_hook.c b/kernel/hook/arm64/syscall_hook.c
+index f8d052c..0000000 100644
+--- a/kernel/hook/arm64/syscall_hook.c
++++ b/kernel/hook/arm64/syscall_hook.c
+@@ -167,7 +167,7 @@ static int __init ksu_find_ni_syscall_slots(int *out_slots, int max_slots)
+ // Unified dispatcher: reads original NR from x8, dispatches to handler.
+ // Validates that syscallno matches our dispatcher slot (i.e. we redirected it),
+ // otherwise it's a spurious call — return -ENOSYS.
+-static long __nocfi ksu_syscall_dispatcher(const struct pt_regs *regs)
++asmlinkage long __nocfi ksu_syscall_dispatcher(const struct pt_regs *regs)
+ {
+     if (regs->syscallno != ksu_dispatcher_nr)
+         return -ENOSYS;
+@@ -219,13 +219,35 @@ bool ksu_has_syscall_hook(int nr)
+ 
+ void __init ksu_syscall_hook_init(void)
+ {
+-    int ni_slot;
++    int ni_slot = -1;
+ 
+     memset(syscall_hooks, 0, sizeof(syscall_hooks));
+ 
+     ksu_syscall_table = (syscall_fn_t *)ksu_resolve_symbol_for_functable_hook("sys_call_table");
+     pr_info("sys_call_table=0x%lx", (unsigned long)ksu_syscall_table);
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
++    /*
++     * Linux 4.19 supplies this entry at link time.  Do not write the
++     * read-only syscall table: doing so is rejected by the SM8250
++     * firmware and resets the device before Android can start.
++     */
++    if (!ksu_syscall_table)
++        return;
++
++    ni_slot = __NR_arch_specific_syscall;
++    if (READ_ONCE(ksu_syscall_table[ni_slot]) !=
++        (syscall_fn_t)ksu_syscall_dispatcher) {
++        pr_err("SukiSU-4.19: build-time dispatcher missing at slot %d\n", ni_slot);
++        return;
++    }
++
++    ksu_dispatcher_nr = ni_slot;
++    pr_info("SukiSU-4.19: build-time dispatcher active at slot %d\n",
++            ksu_dispatcher_nr);
++    return;
++#endif
++
+     if (!ksu_syscall_table)
+         return;
+ 
+diff --git a/kernel/hook/syscall_hook.h b/kernel/hook/syscall_hook.h
+index 0000000..0000000 100644
+--- a/kernel/hook/syscall_hook.h
++++ b/kernel/hook/syscall_hook.h
+@@ -11,6 +11,9 @@ extern syscall_fn_t *ksu_syscall_table;
+ // Dispatcher slot number in syscall table
+ extern int ksu_dispatcher_nr;
+ 
++// Exported for the Linux 4.19 build-time ARM64 syscall-table entry.
++asmlinkage long ksu_syscall_dispatcher(const struct pt_regs *regs);
++
+ // Syscall hook handler type.
+ // orig_nr: the original syscall number before redirection
+ // regs: the original pt_regs from userspace
+diff --git a/kernel/runtime/ksud_integration.c b/kernel/runtime/ksud_integration.c
+index 0000000..0000000 100644
+--- a/kernel/runtime/ksud_integration.c
++++ b/kernel/runtime/ksud_integration.c
+@@ -614,8 +614,13 @@ static void do_stop_input_hook(struct work_struct *work)
+ 
+ static void stop_init_rc_hook()
+ {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
++    ksu_unregister_syscall_hook(__NR_read);
++    ksu_unregister_syscall_hook(__NR_fstat);
++#else
+     ksu_syscall_table_unhook(__NR_read);
+     ksu_syscall_table_unhook(__NR_fstat);
++#endif
+     pr_info("unregister init_rc syscall hook\n");
+ }
+ 
+@@ -642,13 +647,24 @@ void __init ksu_ksud_init()
+ {
+     int ret;
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
++    orig_sys_read = READ_ONCE(ksu_syscall_table[__NR_read]);
++    orig_sys_fstat = READ_ONCE(ksu_syscall_table[__NR_fstat]);
++    ret = ksu_register_syscall_hook(__NR_read, ksu_sys_read);
++    if (ret)
++        pr_err("SukiSU-4.19: register read hook failed: %d\n", ret);
++    ret = ksu_register_syscall_hook(__NR_fstat, ksu_sys_fstat);
++    if (ret)
++        pr_err("SukiSU-4.19: register fstat hook failed: %d\n", ret);
++#else
+     ksu_syscall_table_hook(__NR_read, ksu_sys_read, &orig_sys_read);
+     ksu_syscall_table_hook(__NR_fstat, ksu_sys_fstat, &orig_sys_fstat);
++#endif
+     if (!orig_sys_read || !orig_sys_fstat)
+         pr_err("SukiSU-4.19: ksud init hook failed: read_hook=%d fstat_hook=%d\n", !!orig_sys_read,
+                !!orig_sys_fstat);
+     else
+-        pr_info("SukiSU-4.19: ksud init hooks installed\n");
++        pr_info("SukiSU-4.19: ksud init dispatcher hooks installed\n");
+ 
+     ret = register_kprobe(&input_event_kp);
+     if (ret)
+-- 
+2.53.0.windows.2

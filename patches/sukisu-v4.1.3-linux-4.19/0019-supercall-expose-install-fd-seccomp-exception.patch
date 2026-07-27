@@ -1,0 +1,58 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Mon, 27 Jul 2026 18:20:00 +0800
+Subject: [PATCH] supercall: expose install-fd seccomp exception
+
+Android's app seccomp policy rejects reboot(2), but SukiSU v4.1.3 uses
+an otherwise invalid reboot request to install its anonymous control FD.
+Expose a strict predicate so the companion ARM64 patch can allow only
+that two-magic-value request to reach the existing reboot kprobe.
+---
+ kernel/supercall/supercall.c | 9 +++++++++
+ kernel/supercall/supercall.h | 4 ++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/kernel/supercall/supercall.c b/kernel/supercall/supercall.c
+index 0000000..0000000 100644
+--- a/kernel/supercall/supercall.c
++++ b/kernel/supercall/supercall.c
+@@ -65,6 +65,15 @@ int ksu_install_fd(void)
+     return fd;
+ }
+ 
++bool ksu_is_install_fd_syscall(int nr, const struct pt_regs *regs)
++{
++    if (nr != __NR_reboot)
++        return false;
++
++    return (int)PT_REGS_PARM1(regs) == KSU_INSTALL_MAGIC1 &&
++           (int)PT_REGS_PARM2(regs) == KSU_INSTALL_MAGIC2;
++}
++
+ static void ksu_install_fd_tw_func(struct callback_head *cb)
+ {
+     struct ksu_install_fd_tw *tw = container_of(cb, struct ksu_install_fd_tw, cb);
+diff --git a/kernel/supercall/supercall.h b/kernel/supercall/supercall.h
+index 0000000..0000000 100644
+--- a/kernel/supercall/supercall.h
++++ b/kernel/supercall/supercall.h
+@@ -3,6 +3,8 @@
+ #include <linux/types.h>
+ #include <linux/uaccess.h>
+ 
++struct pt_regs;
++
+ // IOCTL handler types
+ typedef int (*ksu_ioctl_handler_t)(void __user *arg);
+ typedef bool (*ksu_perm_check_t)(void);
+@@ -18,6 +20,8 @@ struct ksu_ioctl_cmd_map {
+ // Install KSU fd to current process
+ int ksu_install_fd(void);
+ 
++bool ksu_is_install_fd_syscall(int nr, const struct pt_regs *regs);
++
+ void ksu_supercalls_init(void);
+ void ksu_supercalls_exit(void);
+ #endif // __KSU_H_SUPERCALL
+-- 
+2.53.0.windows.2

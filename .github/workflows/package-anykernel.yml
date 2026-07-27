@@ -132,7 +132,7 @@ jobs:
           grep -Fqx 'flashable_package=yes' dist/root-readiness.txt
           grep -Fqx 'ready_for_owner_device_experimental_test=yes' dist/root-readiness.txt
           grep -Fqx 'release_ready=no' dist/root-readiness.txt
-          grep -Fqx 'device_boot_test=no' dist/root-readiness.txt
+          grep -Fqx 'device_boot_test=diagnostic_variant_only' dist/root-readiness.txt
           grep -Fqx 'root_functional_test=no' dist/root-readiness.txt
           grep -Fqx 'root_verified_on_device=no' dist/root-readiness.txt
 

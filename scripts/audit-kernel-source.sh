@@ -29,9 +29,9 @@ sukisu_patch_count="$(
 )"
 total_patch_count=$((kernel_patch_count + sukisu_patch_count))
 
-[[ "${kernel_patch_count}" -eq 4 ]]
-[[ "${sukisu_patch_count}" -eq 18 ]]
-[[ "${total_patch_count}" -eq 22 ]]
+[[ "${kernel_patch_count}" -eq 6 ]]
+[[ "${sukisu_patch_count}" -eq 19 ]]
+[[ "${total_patch_count}" -eq 25 ]]
 
 grep -Fq 'int ksu_apply_kernelsu_policydb_rules(struct policydb *db)' "${rules_file}"
 grep -Fq 'SukiSU-4.19: pre-install SELinux rule injection begin' "${rules_file}"
@@ -42,8 +42,33 @@ grep -Fq 'SukiSU-4.19: dynamic sepolicy rejected wildcard allow' "${rules_file}"
 grep -Fq 'SukiSU-4.19: dynamic sepolicy rejected permissive request' "${rules_file}"
 
 syscall_hook_file="${sukisu_dir}/kernel/hook/arm64/syscall_hook.c"
-if ! grep -Fq 'DIAGNOSTIC: skipping syscall table patch' "${syscall_hook_file}"; then
-  echo "Diagnostic syscall skip not found in ${syscall_hook_file}" >&2
+if ! grep -Fq 'SukiSU-4.19: build-time dispatcher active' "${syscall_hook_file}"; then
+  echo "Linux 4.19 build-time dispatcher path not found in ${syscall_hook_file}" >&2
+  exit 1
+fi
+
+kernel_syscall_file="${kernel_dir}/arch/arm64/kernel/sys.c"
+if ! grep -Fq '[__NR_arch_specific_syscall] = ksu_syscall_dispatcher' \
+  "${kernel_syscall_file}"; then
+  echo "Build-time SukiSU syscall-table entry not found in ${kernel_syscall_file}" >&2
+  exit 1
+fi
+
+ksud_file="${sukisu_dir}/kernel/runtime/ksud_integration.c"
+if ! grep -Fq 'ksu_register_syscall_hook(__NR_read, ksu_sys_read)' \
+  "${ksud_file}" ||
+   ! grep -Fq 'ksu_register_syscall_hook(__NR_fstat, ksu_sys_fstat)' \
+  "${ksud_file}"; then
+  echo "Linux 4.19 ksud dispatcher hooks not found in ${ksud_file}" >&2
+  exit 1
+fi
+
+supercall_file="${sukisu_dir}/kernel/supercall/supercall.c"
+ptrace_file="${kernel_dir}/arch/arm64/kernel/ptrace.c"
+if ! grep -Fq 'ksu_is_install_fd_syscall' "${supercall_file}" ||
+   ! grep -Fq '!ksu_is_install_fd_syscall(regs->syscallno, regs)' \
+  "${ptrace_file}"; then
+  echo "Exact SukiSU install-FD seccomp exception is missing" >&2
   exit 1
 fi
 
@@ -90,5 +115,8 @@ ksu_domain_permissive=no
 unconditional_permissive=no
 wildcard_allow=no
 susfs=absent
+syscall_dispatcher=arm64_build_time_slot_244
+runtime_syscall_table_writes=disabled_on_linux_4_19
+manager_transport_seccomp_exception=install_fd_magic_only
 source_audit=passed
 EOF
