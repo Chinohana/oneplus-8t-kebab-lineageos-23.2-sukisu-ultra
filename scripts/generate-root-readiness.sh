@@ -47,6 +47,7 @@ require_patch 'sukisu-v4.1.3-linux-4.19/0015-sukisu-restore-experimental-Linux-4
 require_patch 'sukisu-v4.1.3-linux-4.19/0017-selinux-use-pre-install-policy-hook-on-Linux-4.19.patch'
 require_patch 'sukisu-v4.1.3-linux-4.19/0018-arm64-use-build-time-dispatcher-on-Linux-4.19.patch'
 require_patch 'sukisu-v4.1.3-linux-4.19/0019-supercall-expose-install-fd-seccomp-exception.patch'
+require_patch 'sukisu-v4.1.3-linux-4.19/0020-compat-adapt-ksud-hooks-to-dispatcher-signature.patch'
 require_patch 'kernel-lineage-23.2/0004-selinux-inject-KSU-rules-before-policy-install.patch'
 require_patch 'kernel-lineage-23.2/0005-arm64-reserve-build-time-SukiSU-dispatcher.patch'
 require_patch 'kernel-lineage-23.2/0006-arm64-allow-SukiSU-install-fd-supercall-through-sec.patch'

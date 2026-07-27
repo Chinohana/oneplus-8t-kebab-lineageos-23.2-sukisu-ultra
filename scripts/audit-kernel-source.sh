@@ -30,8 +30,8 @@ sukisu_patch_count="$(
 total_patch_count=$((kernel_patch_count + sukisu_patch_count))
 
 [[ "${kernel_patch_count}" -eq 6 ]]
-[[ "${sukisu_patch_count}" -eq 19 ]]
-[[ "${total_patch_count}" -eq 25 ]]
+[[ "${sukisu_patch_count}" -eq 20 ]]
+[[ "${total_patch_count}" -eq 26 ]]
 
 grep -Fq 'int ksu_apply_kernelsu_policydb_rules(struct policydb *db)' "${rules_file}"
 grep -Fq 'SukiSU-4.19: pre-install SELinux rule injection begin' "${rules_file}"
@@ -55,9 +55,9 @@ if ! grep -Fq '[__NR_arch_specific_syscall] = ksu_syscall_dispatcher' \
 fi
 
 ksud_file="${sukisu_dir}/kernel/runtime/ksud_integration.c"
-if ! grep -Fq 'ksu_register_syscall_hook(__NR_read, ksu_sys_read)' \
+if ! grep -Fq 'ksu_register_syscall_hook(__NR_read, ksu_sys_read_dispatch)' \
   "${ksud_file}" ||
-   ! grep -Fq 'ksu_register_syscall_hook(__NR_fstat, ksu_sys_fstat)' \
+   ! grep -Fq 'ksu_register_syscall_hook(__NR_fstat, ksu_sys_fstat_dispatch)' \
   "${ksud_file}"; then
   echo "Linux 4.19 ksud dispatcher hooks not found in ${ksud_file}" >&2
   exit 1

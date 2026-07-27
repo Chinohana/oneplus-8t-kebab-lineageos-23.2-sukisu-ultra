@@ -1,0 +1,61 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Mon, 27 Jul 2026 21:45:00 +0800
+Subject: [PATCH] compat: adapt ksud hooks to dispatcher signature
+
+The legacy read and fstat wrappers take only pt_regs because they used
+to replace syscall-table entries directly.  Add Linux 4.19 adapters for
+the dispatcher's (original-number, pt_regs) callback signature.
+---
+ kernel/runtime/ksud_integration.c | 20 ++++++++++++++++++--
+ 1 file changed, 18 insertions(+), 2 deletions(-)
+
+diff --git a/kernel/runtime/ksud_integration.c b/kernel/runtime/ksud_integration.c
+index 0000000..0000000 100644
+--- a/kernel/runtime/ksud_integration.c
++++ b/kernel/runtime/ksud_integration.c
+@@ -514,6 +514,14 @@ static long ksu_sys_read(const struct pt_regs *regs)
+     return orig_sys_read(regs);
+ }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
++static long ksu_sys_read_dispatch(int orig_nr, const struct pt_regs *regs)
++{
++    (void)orig_nr;
++    return ksu_sys_read(regs);
++}
++#endif
++
+ static long (*orig_sys_fstat)(const struct pt_regs *regs);
+ static long ksu_sys_fstat(const struct pt_regs *regs)
+ {
+@@ -556,6 +564,14 @@ static long ksu_sys_fstat(const struct pt_regs *regs)
+     return ret;
+ }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
++static long ksu_sys_fstat_dispatch(int orig_nr, const struct pt_regs *regs)
++{
++    (void)orig_nr;
++    return ksu_sys_fstat(regs);
++}
++#endif
++
+ static int input_handle_event_handler_pre(struct kprobe *p, struct pt_regs *regs)
+ {
+     unsigned int *type = (unsigned int *)&PT_REGS_PARM2(regs);
+@@ -648,10 +664,10 @@ void __init ksu_ksud_init()
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
+     orig_sys_read = READ_ONCE(ksu_syscall_table[__NR_read]);
+     orig_sys_fstat = READ_ONCE(ksu_syscall_table[__NR_fstat]);
+-    ret = ksu_register_syscall_hook(__NR_read, ksu_sys_read);
++    ret = ksu_register_syscall_hook(__NR_read, ksu_sys_read_dispatch);
+     if (ret)
+         pr_err("SukiSU-4.19: register read hook failed: %d\n", ret);
+-    ret = ksu_register_syscall_hook(__NR_fstat, ksu_sys_fstat);
++    ret = ksu_register_syscall_hook(__NR_fstat, ksu_sys_fstat_dispatch);
+     if (ret)
+         pr_err("SukiSU-4.19: register fstat hook failed: %d\n", ret);
+ #else
+-- 
+2.53.0.windows.2
