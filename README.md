@@ -84,9 +84,11 @@ AnyKernel3 ZIP 才可由 Lineage Recovery sideload。完整前置条件、首次
 
 若管理器显示内核工作中，但 RootService 因 Android 拒绝加载可写
 `cache/main.jar` 而失败，请人工运行
-**Build PAIRED Manager and TEST-ONLY kebab kernel**。该工作流在同一个 job
-中构建修正版 libsu、临时签名的管理器，以及信任该临时证书的内核测试包；
-私钥不会进入 Artifact。APK 和内核 ZIP 必须来自同一个 run，安装顺序见
+**Build PAIRED Manager and TEST-ONLY kebab kernel**；在新工作流尚未合入默认
+分支时，也可运行 **Build TEST-ONLY kebab AnyKernel3** 并把
+`paired_manager` 设为 `true`。它们会在同一个 job 中构建修正版 libsu、
+临时签名的管理器，以及信任该临时证书的内核测试包；私钥不会进入
+Artifact。APK 和内核 ZIP 必须来自同一个 run，安装顺序见
 [`docs/PAIRED_MANAGER_INSTALL.md`](docs/PAIRED_MANAGER_INSTALL.md)。
 
 ## 可追踪性与可复现性

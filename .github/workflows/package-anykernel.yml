@@ -2,6 +2,12 @@ name: Build TEST-ONLY kebab AnyKernel3
 
 on:
   workflow_dispatch:
+    inputs:
+      paired_manager:
+        description: Build the patched Manager and its paired kernel
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -12,6 +18,7 @@ concurrency:
 
 jobs:
   build-test-package:
+    if: ${{ !inputs.paired_manager }}
     name: LineageOS 23.2 / kebab / TEST-ONLY AnyKernel3
     runs-on: ubuntu-22.04
     timeout-minutes: 120
@@ -156,3 +163,7 @@ jobs:
           if-no-files-found: error
           compression-level: 6
           retention-days: 14
+
+  build-paired-bundle:
+    if: ${{ inputs.paired_manager }}
+    uses: ./.github/workflows/build-paired-manager-kernel.yml
