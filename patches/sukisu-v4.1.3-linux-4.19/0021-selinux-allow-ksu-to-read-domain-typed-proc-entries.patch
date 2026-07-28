@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Tue, 28 Jul 2026 21:45:00 +0800
+Subject: [PATCH] selinux: allow ksu to read domain-typed proc entries
+
+Android labels per-process procfs inodes with the process domain rather
+than a regular file_type.  The explicit Linux 4.19 rule table therefore
+does not cover /proc/<pid>, even though it grants ksu read access to
+file_type objects.  A manager root shell consequently dies while looking
+up its own file descriptors after the credential transition succeeds.
+
+Grant read-only access from ksu to procfs objects carrying a domain type.
+Keep the legacy test kernel enforcing and do not restore the upstream
+permissive or wildcard rules.
+---
+ kernel/selinux/rules.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
+index 0000000..0000000 100644
+--- a/kernel/selinux/rules.c
++++ b/kernel/selinux/rules.c
+@@ -92,6 +92,16 @@ static bool ksu_apply_legacy_kernelsu_rules(struct policydb *db)
+         { "init", KERNEL_SU_DOMAIN, "process", "sigchld" },
+         { "init", KERNEL_SU_DOMAIN, "process", "noatsecure" },
+         { "init", KERNEL_SU_DOMAIN, "process", "rlimitinh" },
++        /* Android procfs PID inodes inherit their process domain type. */
++        { KERNEL_SU_DOMAIN, "domain", "dir", "search" },
++        { KERNEL_SU_DOMAIN, "domain", "dir", "open" },
++        { KERNEL_SU_DOMAIN, "domain", "dir", "read" },
++        { KERNEL_SU_DOMAIN, "domain", "dir", "getattr" },
++        { KERNEL_SU_DOMAIN, "domain", "file", "open" },
++        { KERNEL_SU_DOMAIN, "domain", "file", "read" },
++        { KERNEL_SU_DOMAIN, "domain", "file", "getattr" },
++        { KERNEL_SU_DOMAIN, "domain", "lnk_file", "read" },
++        { KERNEL_SU_DOMAIN, "domain", "lnk_file", "getattr" },
+         { KERNEL_SU_DOMAIN, "domain", "process", "getattr" },
+         { KERNEL_SU_DOMAIN, "domain", "process", "getpgid" },
+         { KERNEL_SU_DOMAIN, "domain", "process", "signal" },
+-- 
+2.53.0.windows.2

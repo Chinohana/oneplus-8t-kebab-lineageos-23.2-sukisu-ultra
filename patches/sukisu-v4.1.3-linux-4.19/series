@@ -18,3 +18,4 @@
 0018-arm64-use-build-time-dispatcher-on-Linux-4.19.patch
 0019-supercall-expose-install-fd-seccomp-exception.patch
 0020-compat-adapt-ksud-hooks-to-dispatcher-signature.patch
+0021-selinux-allow-ksu-to-read-domain-typed-proc-entries.patch
