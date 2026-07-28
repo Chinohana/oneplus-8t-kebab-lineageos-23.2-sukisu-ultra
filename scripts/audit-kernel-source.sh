@@ -30,8 +30,8 @@ sukisu_patch_count="$(
 total_patch_count=$((kernel_patch_count + sukisu_patch_count))
 
 [[ "${kernel_patch_count}" -eq 6 ]]
-[[ "${sukisu_patch_count}" -eq 20 ]]
-[[ "${total_patch_count}" -eq 26 ]]
+[[ "${sukisu_patch_count}" -eq 21 ]]
+[[ "${total_patch_count}" -eq 27 ]]
 
 grep -Fq 'int ksu_apply_kernelsu_policydb_rules(struct policydb *db)' "${rules_file}"
 grep -Fq 'SukiSU-4.19: pre-install SELinux rule injection begin' "${rules_file}"
@@ -40,6 +40,18 @@ grep -Fq 'second-stage active-policy mutation skipped' "${rules_file}"
 grep -Fq 'dynamic sepolicy is disabled: no safe copy-on-write policy installer' "${rules_file}"
 grep -Fq 'SukiSU-4.19: dynamic sepolicy rejected wildcard allow' "${rules_file}"
 grep -Fq 'SukiSU-4.19: dynamic sepolicy rejected permissive request' "${rules_file}"
+for required_proc_rule in \
+  '{ KERNEL_SU_DOMAIN, "domain", "dir", "search" }' \
+  '{ KERNEL_SU_DOMAIN, "domain", "dir", "open" }' \
+  '{ KERNEL_SU_DOMAIN, "domain", "dir", "read" }' \
+  '{ KERNEL_SU_DOMAIN, "domain", "dir", "getattr" }' \
+  '{ KERNEL_SU_DOMAIN, "domain", "file", "open" }' \
+  '{ KERNEL_SU_DOMAIN, "domain", "file", "read" }' \
+  '{ KERNEL_SU_DOMAIN, "domain", "file", "getattr" }' \
+  '{ KERNEL_SU_DOMAIN, "domain", "lnk_file", "read" }' \
+  '{ KERNEL_SU_DOMAIN, "domain", "lnk_file", "getattr" }'; do
+  grep -Fq "${required_proc_rule}" "${rules_file}"
+done
 
 syscall_hook_file="${sukisu_dir}/kernel/hook/arm64/syscall_hook.c"
 if ! grep -Fq 'SukiSU-4.19: build-time dispatcher active' "${syscall_hook_file}"; then
@@ -118,5 +130,6 @@ susfs=absent
 syscall_dispatcher=arm64_build_time_slot_244
 runtime_syscall_table_writes=disabled_on_linux_4_19
 manager_transport_seccomp_exception=install_fd_magic_only
+ksu_domain_procfs_read_access=explicit_read_only
 source_audit=passed
 EOF
