@@ -1,1 +1,2 @@
 0001-manager-use-patched-local-libsu-and-owner-version.patch
+0002-ksud-use-absolute-system-shell-for-manager-root.patch

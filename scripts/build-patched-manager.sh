@@ -20,6 +20,12 @@ for lock_var in SUKISU_COMMIT MANAGER_LIBSU_COMMIT; do
     exit 1
   }
 done
+[[ "${SUKISU_VERSION_CODE}" =~ ^[0-9]+$ ]] || {
+  echo "Invalid SUKISU_VERSION_CODE: ${SUKISU_VERSION_CODE}" >&2
+  exit 1
+}
+grep -Fq "+KSU_VERSION := ${SUKISU_VERSION_CODE}" \
+  "${ROOT_DIR}/patches/sukisu-v4.1.3-linux-4.19/0016-build-make-SukiSU-version-metadata-deterministic.patch"
 
 apply_patch_series() {
   local repo="$1"
@@ -79,6 +85,11 @@ grep -Fq 'mainJar.setReadOnly()' "${root_service_file}"
 grep -Fq "version = \"${LIBSU_PATCH_VERSION}\"" "${LIBSU_DIR}/build.gradle.kts"
 grep -Fq "libsu = \"${LIBSU_PATCH_VERSION}\"" \
   "${SUKISU_MANAGER_DIR}/manager/gradle/libs.versions.toml"
+grep -Fq \
+  'managerVersionCode by extra(if (ownerPatchedManager) System.getenv("KSU_OWNER_VERSION_CODE").toInt() else getVersionCode())' \
+  "${SUKISU_MANAGER_DIR}/manager/build.gradle.kts"
+grep -Fq 'let mut command = Command::new("/system/bin/sh");' \
+  "${SUKISU_MANAGER_DIR}/userspace/ksud/src/su.rs"
 
 manager_dir="${SUKISU_MANAGER_DIR}/manager"
 keystore_file="${manager_dir}/owner-paired-key.jks"
@@ -134,6 +145,7 @@ echo "Building patched SukiSU manager"
 (
   cd "${manager_dir}"
   KSU_OWNER_PATCHED_MANAGER=1 \
+    KSU_OWNER_VERSION_CODE="${SUKISU_VERSION_CODE}" \
     ./gradlew --no-daemon clean assembleRelease
 )
 
@@ -193,7 +205,7 @@ grep -Fx 'lib/arm64-v8a/libksud.so' \
 
 cat > "${DIST_DIR}/patched-manager-build-info.txt" <<EOF
 manager_version=${MANAGER_VERSION}
-manager_version_code=40797
+manager_version_code=${SUKISU_VERSION_CODE}
 manager_package=com.sukisu.ultra
 sukisu_commit=${SUKISU_COMMIT}
 libsu_commit=${MANAGER_LIBSU_COMMIT}

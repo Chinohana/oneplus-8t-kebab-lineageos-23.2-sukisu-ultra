@@ -1,0 +1,27 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Tue, 28 Jul 2026 19:05:00 +0800
+Subject: [PATCH] ksud: use the absolute Android shell path for manager root
+
+The manager launches its bundled ksud directly from an Android app
+process.  After the kernel grants root, do not rely on that process
+having a system PATH entry when replacing ksud with a persistent shell.
+The default su-compatible path already uses /system/bin/sh.
+---
+ userspace/ksud/src/su.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/userspace/ksud/src/su.rs b/userspace/ksud/src/su.rs
+index 0000000..0000000 100644
+--- a/userspace/ksud/src/su.rs
++++ b/userspace/ksud/src/su.rs
+@@ -22,6 +22,6 @@ pub fn grant_root(global_mnt: bool) -> Result<()> {
+     crate::ksucalls::grant_root()?;
+ 
+-    let mut command = Command::new("sh");
++    let mut command = Command::new("/system/bin/sh");
+     let command = unsafe {
+         command.pre_exec(move || {
+             if global_mnt {
+-- 
+2.53.0.windows.2
