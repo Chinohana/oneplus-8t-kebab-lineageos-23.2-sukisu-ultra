@@ -30,8 +30,8 @@ sukisu_patch_count="$(
 total_patch_count=$((kernel_patch_count + sukisu_patch_count))
 
 [[ "${kernel_patch_count}" -eq 6 ]]
-[[ "${sukisu_patch_count}" -eq 21 ]]
-[[ "${total_patch_count}" -eq 27 ]]
+[[ "${sukisu_patch_count}" -eq 22 ]]
+[[ "${total_patch_count}" -eq 28 ]]
 
 grep -Fq 'int ksu_apply_kernelsu_policydb_rules(struct policydb *db)' "${rules_file}"
 grep -Fq 'SukiSU-4.19: pre-install SELinux rule injection begin' "${rules_file}"
@@ -52,6 +52,11 @@ for required_proc_rule in \
   '{ KERNEL_SU_DOMAIN, "domain", "lnk_file", "getattr" }'; do
   grep -Fq "${required_proc_rule}" "${rules_file}"
 done
+grep -Fq '{ KERNEL_SU_DOMAIN, KERNEL_SU_DOMAIN, "process", "fork" }' "${rules_file}"
+grep -Fq '{ KERNEL_SU_DOMAIN, "domain", "fifo_file", "ioctl" }' "${rules_file}"
+grep -Fq \
+  'ksu_allowxperm(db, KERNEL_SU_DOMAIN, "domain", "fifo_file", "0x5401")' \
+  "${rules_file}"
 
 syscall_hook_file="${sukisu_dir}/kernel/hook/arm64/syscall_hook.c"
 if ! grep -Fq 'SukiSU-4.19: build-time dispatcher active' "${syscall_hook_file}"; then
@@ -131,5 +136,7 @@ syscall_dispatcher=arm64_build_time_slot_244
 runtime_syscall_table_writes=disabled_on_linux_4_19
 manager_transport_seccomp_exception=install_fd_magic_only
 ksu_domain_procfs_read_access=explicit_read_only
+ksu_domain_self_fork=allowed
+ksu_domain_fifo_tcgets=explicit_0x5401
 source_audit=passed
 EOF

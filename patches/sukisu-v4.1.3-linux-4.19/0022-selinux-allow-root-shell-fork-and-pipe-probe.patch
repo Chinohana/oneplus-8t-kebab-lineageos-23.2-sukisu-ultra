@@ -1,0 +1,53 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chinohana <chinohana@outlook.com>
+Date: Tue, 28 Jul 2026 23:05:00 +0800
+Subject: [PATCH] selinux: allow root shell fork and pipe probe
+
+The manager now reaches the fixed ksu domain, but its shell still cannot
+run the first child command because the domain lacks self:process fork.
+The Android shell also probes its inherited libsu pipes with TCGETS before
+executing the command.
+
+Allow only a ksu-domain process to fork another ksu-domain process.  Add
+the fifo_file ioctl permission together with an extended-permission rule
+for TCGETS (0x5401) only.  Do not restore the removed wildcard ioctl rule.
+---
+ kernel/selinux/rules.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
+index 0000000..0000000 100644
+--- a/kernel/selinux/rules.c
++++ b/kernel/selinux/rules.c
+@@ -116,6 +116,7 @@ static bool ksu_apply_legacy_kernelsu_rules(struct policydb *db)
+         { KERNEL_SU_DOMAIN, "domain", "file", "getattr" },
+         { KERNEL_SU_DOMAIN, "domain", "lnk_file", "read" },
+         { KERNEL_SU_DOMAIN, "domain", "lnk_file", "getattr" },
++        { KERNEL_SU_DOMAIN, KERNEL_SU_DOMAIN, "process", "fork" },
+         { KERNEL_SU_DOMAIN, "domain", "process", "getattr" },
+         { KERNEL_SU_DOMAIN, "domain", "process", "getpgid" },
+         { KERNEL_SU_DOMAIN, "domain", "process", "signal" },
+@@ -140,6 +141,7 @@ static bool ksu_apply_legacy_kernelsu_rules(struct policydb *db)
+         { KERNEL_SU_DOMAIN, "domain", "fifo_file", "write" },
+         { KERNEL_SU_DOMAIN, "domain", "fifo_file", "open" },
+         { KERNEL_SU_DOMAIN, "domain", "fifo_file", "getattr" },
++        { KERNEL_SU_DOMAIN, "domain", "fifo_file", "ioctl" },
+         { "domain", KERNEL_SU_DOMAIN, "fifo_file", "read" },
+         { "domain", KERNEL_SU_DOMAIN, "fifo_file", "write" },
+         { "domain", KERNEL_SU_DOMAIN, "fifo_file", "open" },
+@@ -194,6 +196,13 @@ static bool ksu_apply_legacy_kernelsu_rules(struct policydb *db)
+                                       ARRAY_SIZE(fifo_file_perms));
+     success &= ksu_apply_legacy_rule_table(db, rules, ARRAY_SIZE(rules));
+ 
++    if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL &&
++        !ksu_allowxperm(db, KERNEL_SU_DOMAIN, "domain", "fifo_file", "0x5401")) {
++        pr_err("SukiSU-4.19: fixed ioctl xperm failed: %s domain:fifo_file 0x5401\n",
++               KERNEL_SU_DOMAIN);
++        success = false;
++    }
++
+     return success;
+ }
+ 
+-- 
+2.53.0.windows.2
